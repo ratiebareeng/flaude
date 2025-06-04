@@ -1,14 +1,30 @@
-name: claude_two
-description: "A new Flutter project."
+name: claude_chat_clone
+description: A lightweight Claude.ai alternative using the Anthropic API.
 publish_to: 'none'
-version: 0.1.0
+version: 1.0.0+1
 
 environment:
-  sdk: ^3.7.2
+  sdk: '>=3.0.0 <4.0.0'
+  flutter: ">=3.10.0"
 
 dependencies:
   flutter:
     sdk: flutter
+  
+  # State management
+  provider: ^6.1.5
+  
+  # HTTP requests
+  http: ^1.4.0
+  
+  # File handling
+  file_picker: ^10.1.9
+  
+  # Local storage
+  shared_preferences: ^2.5.3
+  
+  # UI
+  cupertino_icons: ^1.0.8
 
 dev_dependencies:
   flutter_test:
