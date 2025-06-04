@@ -1,0 +1,18 @@
+{
+  "name": "claude-proxy-server",
+  "version": "1.0.0",
+  "description": "Local proxy server for Claude API to bypass CORS",
+  "main": "proxy_server.js",
+  "scripts": {
+    "start": "node proxy_server.js",
+    "dev": "nodemon proxy_server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "cors": "^2.8.5",
+    "axios": "^1.6.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  }
+}
