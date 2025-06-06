@@ -1,47 +1,161 @@
+// pubspec.yaml dependencies to add:
+/*
+dependencies:
+  flutter:
+    sdk: flutter
+  firebase_core: ^2.24.2
+  firebase_database: ^10.4.0
+  firebase_auth: ^4.15.3
+  provider: ^6.1.1
+  http: ^1.1.2
+  file_picker: ^6.1.1
+  google_fonts: ^6.1.0
+  uuid: ^4.2.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.1
+*/
+
 import 'dart:convert';
 
-import 'package:claude_chat_clone/api.dart';
 import 'package:file_picker/file_picker.dart';
-import 'package:flutter/foundation.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:uuid/uuid.dart';
 
-void main() {
+// ====================== VIEWS ======================
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp();
   runApp(MyApp());
+}
+
+// ====================== MODELS ======================
+
+class AppUser {
+  final String id;
+  final String email;
+  final String? displayName;
+  final DateTime createdAt;
+
+  AppUser({
+    required this.id,
+    required this.email,
+    this.displayName,
+    required this.createdAt,
+  });
+
+  factory AppUser.fromJson(Map<String, dynamic> json) => AppUser(
+        id: json['id'],
+        email: json['email'],
+        displayName: json['displayName'],
+        createdAt: DateTime.parse(json['createdAt']),
+      );
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'email': email,
+        'displayName': displayName,
+        'createdAt': createdAt.toIso8601String(),
+      };
+}
+
+// ====================== VIEW MODELS ======================
+
+class AuthViewModel extends ChangeNotifier {
+  AppUser? _currentUser;
+  bool _isLoading = false;
+
+  AppUser? get currentUser => _currentUser;
+  bool get isAuthenticated => _currentUser != null;
+  bool get isLoading => _isLoading;
+
+  Future<void> signInAnonymously() async {
+    _isLoading = true;
+    notifyListeners();
+
+    try {
+      _currentUser = await FirebaseService.signInAnonymously();
+    } catch (e) {
+      print('Auth error: $e');
+    }
+
+    _isLoading = false;
+    notifyListeners();
+  }
+}
+
+class AuthWrapper extends StatelessWidget {
+  const AuthWrapper({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Consumer<AuthViewModel>(
+      builder: (context, authVM, child) {
+        if (authVM.isLoading) {
+          return Scaffold(
+            body: Center(child: CircularProgressIndicator()),
+          );
+        }
+
+        if (!authVM.isAuthenticated) {
+          return LoginPage();
+        }
+
+        return HomePage();
+      },
+    );
+  }
 }
 
 class Chat {
   final String id;
   String title;
-  final List<Message> messages;
+  final String userId;
   final String? projectId;
+  final String? folderId;
   final DateTime createdAt;
+  DateTime updatedAt;
+  List<Message> messages;
 
   Chat({
     required this.id,
     required this.title,
-    List<Message>? messages,
+    required this.userId,
     this.projectId,
+    this.folderId,
     required this.createdAt,
-  }) : messages = messages ?? [];
+    required this.updatedAt,
+    this.messages = const [],
+  });
 
   factory Chat.fromJson(Map<String, dynamic> json) => Chat(
         id: json['id'],
         title: json['title'],
-        messages: (json['messages'] as List?)
-                ?.map((m) => Message.fromJson(m))
+        userId: json['userId'],
+        projectId: json['projectId'],
+        folderId: json['folderId'],
+        createdAt: DateTime.parse(json['createdAt']),
+        updatedAt: DateTime.parse(json['updatedAt']),
+        messages: (json['messages'] as Map<String, dynamic>?)
+                ?.values
+                .map((msgJson) =>
+                    Message.fromJson(Map<String, dynamic>.from(msgJson)))
                 .toList() ??
             [],
-        projectId: json['projectId'],
-        createdAt: DateTime.parse(json['createdAt']),
       );
 
   String get formattedTime {
     final now = DateTime.now();
-    final diff = now.difference(createdAt);
+    final diff = now.difference(updatedAt);
     if (diff.inDays > 0) return '${diff.inDays}d ago';
     if (diff.inHours > 0) return '${diff.inHours}h ago';
     if (diff.inMinutes > 0) return '${diff.inMinutes}m ago';
@@ -56,14 +170,23 @@ class Chat {
   Map<String, dynamic> toJson() => {
         'id': id,
         'title': title,
-        'messages': messages.map((m) => m.toJson()).toList(),
+        'userId': userId,
         'projectId': projectId,
+        'folderId': folderId,
         'createdAt': createdAt.toIso8601String(),
+        'updatedAt': updatedAt.toIso8601String(),
       };
 }
 
-class ChatListPage extends StatelessWidget {
-  const ChatListPage({super.key});
+class ChatPage extends StatefulWidget {
+  const ChatPage({super.key});
+
+  @override
+  _ChatPageState createState() => _ChatPageState();
+}
+
+class ChatsPage extends StatelessWidget {
+  const ChatsPage({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -73,13 +196,13 @@ class ChatListPage extends StatelessWidget {
         actions: [
           IconButton(
             icon: Icon(Icons.add),
-            onPressed: () => _showNewChatDialog(context),
+            onPressed: () => _createNewChat(context),
           ),
         ],
       ),
-      body: Consumer<ChatProvider>(
-        builder: (context, chatProvider, child) {
-          if (chatProvider.chats.isEmpty) {
+      body: Consumer<ChatViewModel>(
+        builder: (context, chatVM, child) {
+          if (chatVM.chats.isEmpty) {
             return Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -89,7 +212,7 @@ class ChatListPage extends StatelessWidget {
                   Text('No chats yet', style: TextStyle(color: Colors.grey)),
                   SizedBox(height: 16),
                   ElevatedButton(
-                    onPressed: () => _showNewChatDialog(context),
+                    onPressed: () => _createNewChat(context),
                     child: Text('Start New Chat'),
                   ),
                 ],
@@ -98,20 +221,14 @@ class ChatListPage extends StatelessWidget {
           }
 
           return ListView.builder(
-            itemCount: chatProvider.chats.length,
+            itemCount: chatVM.chats.length,
             itemBuilder: (context, index) {
-              final chat = chatProvider.chats[index];
+              final chat = chatVM.chats[index];
               return ListTile(
                 title: Text(chat.title),
                 subtitle: Text(chat.lastMessage),
                 trailing: Text(chat.formattedTime),
-                onTap: () {
-                  chatProvider.setCurrentChat(chat);
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => ChatPage()),
-                  );
-                },
+                onTap: () => _openChat(context, chat),
                 onLongPress: () => _showChatOptions(context, chat),
               );
             },
@@ -121,45 +238,30 @@ class ChatListPage extends StatelessWidget {
     );
   }
 
-  _createNewChat(BuildContext context, Project? project) {
-    final chatProvider = Provider.of<ChatProvider>(context, listen: false);
-    final chat = chatProvider.createNewChat(project);
-    chatProvider.setCurrentChat(chat);
+  void _createNewChat(BuildContext context) async {
+    final authVM = Provider.of<AuthViewModel>(context, listen: false);
+    final chatVM = Provider.of<ChatViewModel>(context, listen: false);
+
+    final chat = await chatVM.createNewChat(authVM.currentUser!.id);
+    chatVM.setCurrentChat(chat);
+
     Navigator.push(
       context,
       MaterialPageRoute(builder: (_) => ChatPage()),
     );
   }
 
-  _renameChatDialog(BuildContext context, Chat chat) {
-    final controller = TextEditingController(text: chat.title);
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Rename Chat'),
-        content: TextField(
-          controller: controller,
-          decoration: InputDecoration(hintText: 'Chat title'),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () {
-              Provider.of<ChatProvider>(context, listen: false)
-                  .renameChat(chat, controller.text);
-              Navigator.pop(context);
-            },
-            child: Text('Save'),
-          ),
-        ],
-      ),
+  void _openChat(BuildContext context, Chat chat) {
+    final chatVM = Provider.of<ChatViewModel>(context, listen: false);
+    chatVM.setCurrentChat(chat);
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => ChatPage()),
     );
   }
 
-  _showChatOptions(BuildContext context, Chat chat) {
+  void _showChatOptions(BuildContext context, Chat chat) {
     showModalBottomSheet(
       context: context,
       builder: (context) => Column(
@@ -170,7 +272,7 @@ class ChatListPage extends StatelessWidget {
             title: Text('Rename'),
             onTap: () {
               Navigator.pop(context);
-              _renameChatDialog(context, chat);
+              // TODO: Implement rename functionality
             },
           ),
           ListTile(
@@ -178,165 +280,160 @@ class ChatListPage extends StatelessWidget {
             title: Text('Delete', style: TextStyle(color: Colors.red)),
             onTap: () {
               Navigator.pop(context);
-              Provider.of<ChatProvider>(context, listen: false)
-                  .deleteChat(chat);
+              Provider.of<ChatViewModel>(context, listen: false)
+                  .deleteChat(chat.id);
             },
           ),
         ],
       ),
     );
   }
+}
 
-  _showNewChatDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text('New Chat'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              title: Text('General Chat'),
-              onTap: () {
-                Navigator.pop(context);
-                _createNewChat(context, null);
-              },
-            ),
-            Consumer<ProjectProvider>(
-              builder: (context, projectProvider, child) {
-                return Column(
-                  children: projectProvider.projects.map((project) {
-                    return ListTile(
-                      title: Text('Chat in ${project.name}'),
-                      onTap: () {
-                        Navigator.pop(context);
-                        _createNewChat(context, project);
-                      },
-                    );
-                  }).toList(),
-                );
-              },
-            ),
-          ],
-        ),
-      ),
+class ChatTile extends StatelessWidget {
+  final Chat chat;
+  final VoidCallback onTap;
+
+  const ChatTile({super.key, required this.chat, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      leading: Icon(Icons.chat_bubble_outline),
+      title: Text(chat.title),
+      subtitle: Text(chat.lastMessage),
+      trailing: Text(chat.formattedTime),
+      onTap: onTap,
     );
   }
 }
 
-class ChatPage extends StatefulWidget {
-  const ChatPage({super.key});
-
-  @override
-  _ChatPageState createState() => _ChatPageState();
-}
-
-// Providers
-class ChatProvider with ChangeNotifier {
+class ChatViewModel extends ChangeNotifier {
   List<Chat> _chats = [];
   Chat? _currentChat;
-  String _apiKey = '';
+  List<Message> _currentMessages = [];
   bool _isLoading = false;
   String _selectedModel = 'claude-3-sonnet-20240229';
-  final List<String> _pendingAttachments = [];
+  String _apiKey = '';
 
   final List<String> availableModels = [
     'claude-3-sonnet-20240229',
     'claude-3-haiku-20240307',
     'claude-3-opus-20240229',
+    'claude-3-5-sonnet-20241022',
   ];
 
   List<Chat> get chats => _chats;
   Chat? get currentChat => _currentChat;
+  List<Message> get currentMessages => _currentMessages;
   bool get isLoading => _isLoading;
   String get selectedModel => _selectedModel;
 
-  void addAttachment(PlatformFile file) {
-    _pendingAttachments.add(file.name);
-    notifyListeners();
-  }
-
-  Chat createNewChat(Project? project) {
+  Future<Chat> createNewChat(String userId,
+      {String? projectId, String? folderId}) async {
     final chat = Chat(
-      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      id: const Uuid().v4(),
       title: 'New Chat',
-      projectId: project?.id,
+      userId: userId,
+      projectId: projectId,
+      folderId: folderId,
       createdAt: DateTime.now(),
+      updatedAt: DateTime.now(),
     );
-    _chats.insert(0, chat);
-    _saveChats();
-    notifyListeners();
+
+    await FirebaseService.createChat(chat);
     return chat;
   }
 
-  void deleteChat(Chat chat) {
-    _chats.remove(chat);
-    if (_currentChat == chat) {
-      _currentChat = null;
+  Future<void> deleteChat(String chatId) async {
+    try {
+      await FirebaseService.deleteChat(chatId);
+      if (_currentChat?.id == chatId) {
+        _currentChat = null;
+        _currentMessages = [];
+        notifyListeners();
+      }
+    } catch (e) {
+      print('Error deleting chat: $e');
     }
-    _saveChats();
-    notifyListeners();
   }
 
-  void loadChats() async {
-    final prefs = await SharedPreferences.getInstance();
-    final chatsJson = prefs.getString('chats');
-    if (chatsJson != null) {
-      final chatsList = jsonDecode(chatsJson) as List;
-      _chats = chatsList.map((json) => Chat.fromJson(json)).toList();
+  void listenToChatMessages(String chatId) {
+    FirebaseService.getChatMessages(chatId).listen((messages) {
+      _currentMessages = messages;
       notifyListeners();
-    }
+    });
   }
 
-  void renameChat(Chat chat, String newTitle) {
-    chat.title = newTitle;
-    _saveChats();
-    notifyListeners();
+  void listenToFolderChats(String folderId) {
+    FirebaseService.getFolderChats(folderId).listen((chats) {
+      _chats = chats;
+      notifyListeners();
+    });
   }
 
-  void sendMessage(String content) async {
+  void listenToUserChats(String userId) {
+    FirebaseService.getUserChats(userId).listen((chats) {
+      _chats = chats;
+      notifyListeners();
+    });
+  }
+
+  Future<void> sendMessage(String content) async {
     if (_currentChat == null || _apiKey.isEmpty) return;
 
     _isLoading = true;
     notifyListeners();
 
-    // Add user message
-    final userMessage = Message(
-      content: content,
-      isUser: true,
-      timestamp: DateTime.now(),
-      attachments: List.from(_pendingAttachments),
-    );
-
-    _currentChat!.messages.add(userMessage);
-    _pendingAttachments.clear();
-
-    // Update chat title if it's the first message
-    if (_currentChat!.messages.length == 1) {
-      _currentChat!.title =
-          content.length > 30 ? '${content.substring(0, 30)}...' : content;
-    }
-
-    notifyListeners();
-
     try {
-      final response = await _callClaudeAPI(content);
+      // Add user message
+      final userMessage = Message(
+        id: const Uuid().v4(),
+        content: content,
+        isUser: true,
+        chatId: _currentChat!.id,
+        timestamp: DateTime.now(),
+      );
 
+      await FirebaseService.addMessage(userMessage);
+
+      // Update chat title if it's the first message
+      if (_currentMessages.length == 1) {
+        _currentChat!.title =
+            content.length > 30 ? '${content.substring(0, 30)}...' : content;
+        await FirebaseService.updateChat(_currentChat!);
+      }
+
+      // Get AI response
+      final response = await ClaudeApiService.sendMessage(
+        apiKey: _apiKey,
+        message: content,
+        model: _selectedModel,
+        conversationHistory:
+            _currentMessages.where((m) => !m.isUser).take(10).toList(),
+      );
+
+      // Add assistant message
       final assistantMessage = Message(
+        id: const Uuid().v4(),
         content: response,
         isUser: false,
+        chatId: _currentChat!.id,
         timestamp: DateTime.now(),
+        model: _selectedModel,
       );
 
-      _currentChat!.messages.add(assistantMessage);
-      _saveChats();
+      await FirebaseService.addMessage(assistantMessage);
+      await FirebaseService.updateChat(_currentChat!);
     } catch (e) {
       final errorMessage = Message(
+        id: const Uuid().v4(),
         content: 'Error: ${e.toString()}',
         isUser: false,
+        chatId: _currentChat!.id,
         timestamp: DateTime.now(),
       );
-      _currentChat!.messages.add(errorMessage);
+      await FirebaseService.addMessage(errorMessage);
     }
 
     _isLoading = false;
@@ -350,6 +447,7 @@ class ChatProvider with ChangeNotifier {
 
   void setCurrentChat(Chat chat) {
     _currentChat = chat;
+    listenToChatMessages(chat.id);
     notifyListeners();
   }
 
@@ -357,38 +455,333 @@ class ChatProvider with ChangeNotifier {
     _selectedModel = model;
     notifyListeners();
   }
+}
 
-  Future<String> _callClaudeAPI(String message) async {
-    const apiUrl = 'https://api.anthropic.com/v1/messages';
+class ClaudeApiService {
+  static const String _baseUrl = 'https://api.anthropic.com/v1/messages';
 
-    final response = await http.post(
-      Uri.parse(apiUrl),
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': CLAUDE_API,
-        'anthropic-version': '2023-06-01',
-      },
-      body: jsonEncode({
-        'model': _selectedModel,
-        'max_tokens': 4000,
-        'messages': [
-          {'role': 'user', 'content': message}
-        ],
-      }),
-    );
+  static Future<String> sendMessage({
+    required String apiKey,
+    required String message,
+    required String model,
+    List<Message> conversationHistory = const [],
+  }) async {
+    try {
+      final messages = [
+        ...conversationHistory.map((msg) => {
+              'role': msg.isUser ? 'user' : 'assistant',
+              'content': msg.content,
+            }),
+        {
+          'role': 'user',
+          'content': message,
+        }
+      ];
 
-    if (response.statusCode == 200) {
-      final data = jsonDecode(response.body);
-      return data['content'][0]['text'];
-    } else {
-      throw Exception('API Error: ${response.statusCode} - ${response.body}');
+      final response = await http.post(
+        Uri.parse(_baseUrl),
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': apiKey,
+          'anthropic-version': '2023-06-01',
+        },
+        body: jsonEncode({
+          'model': model,
+          'max_tokens': 4000,
+          'messages': messages,
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return data['content'][0]['text'];
+      } else {
+        throw Exception('API Error: ${response.statusCode} - ${response.body}');
+      }
+    } catch (e) {
+      throw Exception('Failed to send message: $e');
+    }
+  }
+}
+
+// ====================== SERVICES ======================
+
+class FirebaseService {
+  static final FirebaseDatabase _database = FirebaseDatabase.instance;
+  static final FirebaseAuth _auth = FirebaseAuth.instance;
+  static const String _users = 'users';
+  static const String _projects = 'projects';
+  static const String _folders = 'folders';
+  static const String _chats = 'chats';
+  static const String _messages = 'messages';
+
+  static String? get currentUserId => _auth.currentUser?.uid;
+
+  // Messages
+  static Future<void> addMessage(Message message) async {
+    await _database.ref('$_messages/${message.id}').set(message.toJson());
+  }
+
+  // Chats
+  static Future<void> createChat(Chat chat) async {
+    await _database.ref('$_chats/${chat.id}').set(chat.toJson());
+  }
+
+  // Folders
+  static Future<void> createFolder(Folder folder) async {
+    await _database.ref('$_folders/${folder.id}').set(folder.toJson());
+  }
+
+  // Projects
+  static Future<void> createProject(Project project) async {
+    await _database.ref('$_projects/${project.id}').set(project.toJson());
+  }
+
+  static Future<void> deleteChat(String chatId) async {
+    await _database.ref('$_chats/$chatId').remove();
+    // Also delete messages in this chat
+    final messagesQuery =
+        _database.ref(_messages).orderByChild('chatId').equalTo(chatId);
+    final messagesSnapshot = await messagesQuery.once();
+
+    if (messagesSnapshot.snapshot.value != null) {
+      final messages =
+          Map<String, dynamic>.from(messagesSnapshot.snapshot.value as Map);
+      for (String messageId in messages.keys) {
+        await _database.ref('$_messages/$messageId').remove();
+      }
     }
   }
 
-  void _saveChats() async {
-    final prefs = await SharedPreferences.getInstance();
-    final chatsJson = _chats.map((chat) => chat.toJson()).toList();
-    await prefs.setString('chats', jsonEncode(chatsJson));
+  static Future<void> deleteFolder(String folderId) async {
+    await _database.ref('$_folders/$folderId').remove();
+    // Also delete chats in this folder
+    final chatsQuery =
+        _database.ref(_chats).orderByChild('folderId').equalTo(folderId);
+    final chatsSnapshot = await chatsQuery.once();
+
+    if (chatsSnapshot.snapshot.value != null) {
+      final chats =
+          Map<String, dynamic>.from(chatsSnapshot.snapshot.value as Map);
+      for (String chatId in chats.keys) {
+        await deleteChat(chatId);
+      }
+    }
+  }
+
+  static Future<void> deleteProject(String projectId) async {
+    await _database.ref('$_projects/$projectId').remove();
+    // Also delete related folders and chats
+    final foldersQuery =
+        _database.ref(_folders).orderByChild('projectId').equalTo(projectId);
+    final chatsQuery =
+        _database.ref(_chats).orderByChild('projectId').equalTo(projectId);
+
+    final foldersSnapshot = await foldersQuery.once();
+    final chatsSnapshot = await chatsQuery.once();
+
+    if (foldersSnapshot.snapshot.value != null) {
+      final folders =
+          Map<String, dynamic>.from(foldersSnapshot.snapshot.value as Map);
+      for (String folderId in folders.keys) {
+        await _database.ref('$_folders/$folderId').remove();
+      }
+    }
+
+    if (chatsSnapshot.snapshot.value != null) {
+      final chats =
+          Map<String, dynamic>.from(chatsSnapshot.snapshot.value as Map);
+      for (String chatId in chats.keys) {
+        await deleteChat(chatId);
+      }
+    }
+  }
+
+  static Stream<List<Message>> getChatMessages(String chatId) {
+    return _database
+        .ref(_messages)
+        .orderByChild('chatId')
+        .equalTo(chatId)
+        .onValue
+        .map((event) {
+      if (event.snapshot.value == null) return <Message>[];
+
+      final messagesMap =
+          Map<String, dynamic>.from(event.snapshot.value as Map);
+      return messagesMap.values
+          .map((json) => Message.fromJson(Map<String, dynamic>.from(json)))
+          .toList()
+        ..sort((a, b) => a.timestamp.compareTo(b.timestamp));
+    });
+  }
+
+  static Stream<List<Chat>> getFolderChats(String folderId) {
+    return _database
+        .ref(_chats)
+        .orderByChild('folderId')
+        .equalTo(folderId)
+        .onValue
+        .map((event) {
+      if (event.snapshot.value == null) return <Chat>[];
+
+      final chatsMap = Map<String, dynamic>.from(event.snapshot.value as Map);
+      return chatsMap.values
+          .map((json) => Chat.fromJson(Map<String, dynamic>.from(json)))
+          .toList()
+        ..sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
+    });
+  }
+
+  static Stream<List<Folder>> getProjectFolders(String projectId) {
+    return _database
+        .ref(_folders)
+        .orderByChild('projectId')
+        .equalTo(projectId)
+        .onValue
+        .map((event) {
+      if (event.snapshot.value == null) return <Folder>[];
+
+      final foldersMap = Map<String, dynamic>.from(event.snapshot.value as Map);
+      return foldersMap.values
+          .map((json) => Folder.fromJson(Map<String, dynamic>.from(json)))
+          .toList()
+        ..sort((a, b) => a.name.compareTo(b.name));
+    });
+  }
+
+  static Stream<List<Chat>> getUserChats(String userId) {
+    return _database
+        .ref(_chats)
+        .orderByChild('userId')
+        .equalTo(userId)
+        .onValue
+        .map((event) {
+      if (event.snapshot.value == null) return <Chat>[];
+
+      final chatsMap = Map<String, dynamic>.from(event.snapshot.value as Map);
+      return chatsMap.values
+          .map((json) => Chat.fromJson(Map<String, dynamic>.from(json)))
+          .toList()
+        ..sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
+    });
+  }
+
+  static Stream<List<Project>> getUserProjects(String userId) {
+    return _database
+        .ref(_projects)
+        .orderByChild('userId')
+        .equalTo(userId)
+        .onValue
+        .map((event) {
+      if (event.snapshot.value == null) return <Project>[];
+
+      final projectsMap =
+          Map<String, dynamic>.from(event.snapshot.value as Map);
+      return projectsMap.values
+          .map((json) => Project.fromJson(Map<String, dynamic>.from(json)))
+          .toList()
+        ..sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
+    });
+  }
+
+  // User Authentication
+  static Future<AppUser?> signInAnonymously() async {
+    try {
+      final credential = await _auth.signInAnonymously();
+      final user = credential.user;
+
+      if (user != null) {
+        final appUser = AppUser(
+          id: user.uid,
+          email: 'anonymous@claude-clone.app',
+          displayName: 'Anonymous User',
+          createdAt: DateTime.now(),
+        );
+
+        await _database.ref('$_users/${user.uid}').set(appUser.toJson());
+        return appUser;
+      }
+    } catch (e) {
+      print('Error signing in: $e');
+    }
+    return null;
+  }
+
+  static Future<void> updateChat(Chat chat) async {
+    chat.updatedAt = DateTime.now();
+    await _database.ref('$_chats/${chat.id}').update(chat.toJson());
+  }
+
+  static Future<void> updateFolder(Folder folder) async {
+    folder.updatedAt = DateTime.now();
+    await _database.ref('$_folders/${folder.id}').update(folder.toJson());
+  }
+
+  static Future<void> updateProject(Project project) async {
+    project.updatedAt = DateTime.now();
+    await _database.ref('$_projects/${project.id}').update(project.toJson());
+  }
+}
+
+class Folder {
+  final String id;
+  String name;
+  final String projectId;
+  final String userId;
+  final DateTime createdAt;
+  DateTime updatedAt;
+
+  Folder({
+    required this.id,
+    required this.name,
+    required this.projectId,
+    required this.userId,
+    required this.createdAt,
+    required this.updatedAt,
+  });
+
+  factory Folder.fromJson(Map<String, dynamic> json) => Folder(
+        id: json['id'],
+        name: json['name'],
+        projectId: json['projectId'],
+        userId: json['userId'],
+        createdAt: DateTime.parse(json['createdAt']),
+        updatedAt: DateTime.parse(json['updatedAt']),
+      );
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'name': name,
+        'projectId': projectId,
+        'userId': userId,
+        'createdAt': createdAt.toIso8601String(),
+        'updatedAt': updatedAt.toIso8601String(),
+      };
+}
+
+class FolderDetailPage extends StatefulWidget {
+  final Folder folder;
+
+  const FolderDetailPage({super.key, required this.folder});
+
+  @override
+  _FolderDetailPageState createState() => _FolderDetailPageState();
+}
+
+class FolderTile extends StatelessWidget {
+  final Folder folder;
+  final VoidCallback onTap;
+
+  const FolderTile({super.key, required this.folder, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      leading: Icon(Icons.folder, color: Colors.amber),
+      title: Text(folder.name),
+      trailing: Icon(Icons.arrow_forward_ios, size: 16),
+      onTap: onTap,
+    );
   }
 }
 
@@ -399,32 +792,103 @@ class HomePage extends StatefulWidget {
   _HomePageState createState() => _HomePageState();
 }
 
-// Data Models
+class LoginPage extends StatelessWidget {
+  final TextEditingController _apiKeyController = TextEditingController();
+
+  LoginPage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Padding(
+        padding: EdgeInsets.all(24),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.chat, size: 80, color: Color(0xFFBD5D3A)),
+            SizedBox(height: 24),
+            Text(
+              'Claude Chat Clone',
+              style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
+            ),
+            SizedBox(height: 48),
+            TextField(
+              controller: _apiKeyController,
+              decoration: InputDecoration(
+                labelText: 'Claude API Key',
+                hintText: 'sk-ant-api03-...',
+                border: OutlineInputBorder(),
+                prefixIcon: Icon(Icons.key),
+              ),
+              obscureText: true,
+            ),
+            SizedBox(height: 24),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () => _signIn(context),
+                child: Text('Get Started'),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _signIn(BuildContext context) async {
+    if (_apiKeyController.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Please enter your API key')),
+      );
+      return;
+    }
+
+    final authVM = Provider.of<AuthViewModel>(context, listen: false);
+    final chatVM = Provider.of<ChatViewModel>(context, listen: false);
+
+    await authVM.signInAnonymously();
+    chatVM.setApiKey(_apiKeyController.text.trim());
+  }
+}
+
 class Message {
+  final String id;
   final String content;
   final bool isUser;
+  final String chatId;
   final DateTime timestamp;
   final List<String> attachments;
+  final String? model;
 
   Message({
+    required this.id,
     required this.content,
     required this.isUser,
+    required this.chatId,
     required this.timestamp,
     this.attachments = const [],
+    this.model,
   });
 
   factory Message.fromJson(Map<String, dynamic> json) => Message(
+        id: json['id'],
         content: json['content'],
         isUser: json['isUser'],
+        chatId: json['chatId'],
         timestamp: DateTime.parse(json['timestamp']),
         attachments: List<String>.from(json['attachments'] ?? []),
+        model: json['model'],
       );
 
   Map<String, dynamic> toJson() => {
+        'id': id,
         'content': content,
         'isUser': isUser,
+        'chatId': chatId,
         'timestamp': timestamp.toIso8601String(),
         'attachments': attachments,
+        'model': model,
       };
 }
 
@@ -441,12 +905,11 @@ class MessageBubble extends StatelessWidget {
       child: Container(
         margin: EdgeInsets.symmetric(vertical: 4, horizontal: 16),
         padding: EdgeInsets.all(12),
-        constraints:
-            BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.8),
+        constraints: BoxConstraints(
+          maxWidth: MediaQuery.of(context).size.width * 0.8,
+        ),
         decoration: BoxDecoration(
-          color: isUser
-              ? const Color(0xFFBD5D3A) // Claude orange for user messages
-              : Colors.white, // White for Claude messages
+          color: isUser ? const Color(0xFFBD5D3A) : Colors.white,
           borderRadius: BorderRadius.circular(16),
           border: isUser ? null : Border.all(color: Colors.grey.shade200),
         ),
@@ -466,8 +929,11 @@ class MessageBubble extends StatelessWidget {
                         Icon(Icons.attach_file, size: 16),
                         SizedBox(width: 8),
                         Expanded(
-                            child: Text(attachment,
-                                style: TextStyle(fontSize: 12))),
+                          child: Text(
+                            attachment,
+                            style: TextStyle(fontSize: 12),
+                          ),
+                        ),
                       ],
                     ),
                   )),
@@ -491,197 +957,101 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
-        ChangeNotifierProvider(create: (_) => ChatProvider()),
-        ChangeNotifierProvider(create: (_) => ProjectProvider()),
+        ChangeNotifierProvider(create: (_) => AuthViewModel()),
+        ChangeNotifierProvider(create: (_) => ProjectViewModel()),
+        ChangeNotifierProvider(create: (_) => ChatViewModel()),
       ],
       child: MaterialApp(
-        debugShowCheckedModeBanner: false,
         title: 'Claude Chat Clone',
         theme: ThemeData(
-          primarySwatch: Colors.orange,
-          brightness: Brightness.light,
-          scaffoldBackgroundColor: Colors.grey[50],
-          fontFamily: GoogleFonts.inter().fontFamily,
-          textTheme: GoogleFonts.interTextTheme(),
-        ),
-        darkTheme: ThemeData(
           brightness: Brightness.dark,
-          primarySwatch: Colors.orange,
-          scaffoldBackgroundColor: Colors.grey[900],
+          primarySwatch: _createMaterialColor(const Color(0xFFBD5D3A)),
+          scaffoldBackgroundColor: const Color(0xFF1C1C1E),
+          colorScheme: ColorScheme.dark(
+            primary: const Color(0xFFBD5D3A),
+            secondary: const Color(0xFFDA7756),
+            surface: const Color(0xFF2C2C2E),
+            onSurface: const Color(0xFFFFFFFF),
+          ),
           fontFamily: GoogleFonts.inter().fontFamily,
-          textTheme: GoogleFonts.interTextTheme(ThemeData.dark().textTheme),
         ),
-        home: HomePage(),
+        home: AuthWrapper(),
       ),
     );
+  }
+
+  MaterialColor _createMaterialColor(Color color) {
+    List strengths = <double>[.05];
+    Map<int, Color> swatch = {};
+    final int r = color.red, g = color.green, b = color.blue;
+
+    for (int i = 1; i < 10; i++) {
+      strengths.add(0.1 * i);
+    }
+    for (var strength in strengths) {
+      final double ds = 0.5 - strength;
+      swatch[(strength * 1000).round()] = Color.fromRGBO(
+        r + ((ds < 0 ? r : (255 - r)) * ds).round(),
+        g + ((ds < 0 ? g : (255 - g)) * ds).round(),
+        b + ((ds < 0 ? b : (255 - b)) * ds).round(),
+        1,
+      );
+    }
+    return MaterialColor(color.value, swatch);
   }
 }
 
 class Project {
   final String id;
-  final String name;
-  final String description;
+  String name;
+  String description;
+  final String userId;
   final DateTime createdAt;
+  DateTime updatedAt;
+  List<Folder> folders;
 
   Project({
     required this.id,
     required this.name,
     required this.description,
+    required this.userId,
     required this.createdAt,
+    required this.updatedAt,
+    this.folders = const [],
   });
 
   factory Project.fromJson(Map<String, dynamic> json) => Project(
         id: json['id'],
         name: json['name'],
         description: json['description'],
+        userId: json['userId'],
         createdAt: DateTime.parse(json['createdAt']),
+        updatedAt: DateTime.parse(json['updatedAt']),
+        folders: (json['folders'] as Map<String, dynamic>?)
+                ?.values
+                .map((folderJson) =>
+                    Folder.fromJson(Map<String, dynamic>.from(folderJson)))
+                .toList() ??
+            [],
       );
 
   Map<String, dynamic> toJson() => {
         'id': id,
         'name': name,
         'description': description,
+        'userId': userId,
         'createdAt': createdAt.toIso8601String(),
+        'updatedAt': updatedAt.toIso8601String(),
       };
 }
 
-class ProjectDetailPage extends StatelessWidget {
+class ProjectDetailPage extends StatefulWidget {
   final Project project;
 
   const ProjectDetailPage({super.key, required this.project});
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(project.name),
-        actions: [
-          IconButton(
-            icon: Icon(Icons.add),
-            onPressed: () => _createChatInProject(context),
-          ),
-        ],
-      ),
-      body: Column(
-        children: [
-          Padding(
-            padding: EdgeInsets.all(16),
-            child: Card(
-              child: Padding(
-                padding: EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('Description',
-                        style: Theme.of(context).textTheme.titleMedium),
-                    SizedBox(height: 8),
-                    Text(project.description),
-                  ],
-                ),
-              ),
-            ),
-          ),
-          Expanded(
-            child: Consumer<ChatProvider>(
-              builder: (context, chatProvider, child) {
-                final projectChats = chatProvider.chats
-                    .where((chat) => chat.projectId == project.id)
-                    .toList();
-
-                if (projectChats.isEmpty) {
-                  return Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.chat_bubble_outline,
-                            size: 64, color: Colors.grey),
-                        SizedBox(height: 16),
-                        Text('No chats in this project yet'),
-                        SizedBox(height: 16),
-                        ElevatedButton(
-                          onPressed: () => _createChatInProject(context),
-                          child: Text('Start Chat'),
-                        ),
-                      ],
-                    ),
-                  );
-                }
-
-                return ListView.builder(
-                  itemCount: projectChats.length,
-                  itemBuilder: (context, index) {
-                    final chat = projectChats[index];
-                    return ListTile(
-                      title: Text(chat.title),
-                      subtitle: Text(chat.lastMessage),
-                      trailing: Text(chat.formattedTime),
-                      onTap: () {
-                        chatProvider.setCurrentChat(chat);
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (_) => ChatPage()),
-                        );
-                      },
-                    );
-                  },
-                );
-              },
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  _createChatInProject(BuildContext context) {
-    final chatProvider = Provider.of<ChatProvider>(context, listen: false);
-    final chat = chatProvider.createNewChat(project);
-    chatProvider.setCurrentChat(chat);
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (_) => ChatPage()),
-    );
-  }
-}
-
-class ProjectProvider with ChangeNotifier {
-  List<Project> _projects = [];
-
-  List<Project> get projects => _projects;
-
-  void createProject(String name, String description) {
-    final project = Project(
-      id: DateTime.now().millisecondsSinceEpoch.toString(),
-      name: name,
-      description: description,
-      createdAt: DateTime.now(),
-    );
-    _projects.add(project);
-    _saveProjects();
-    notifyListeners();
-  }
-
-  void deleteProject(Project project) {
-    _projects.remove(project);
-    _saveProjects();
-    notifyListeners();
-  }
-
-  void loadProjects() async {
-    final prefs = await SharedPreferences.getInstance();
-    final projectsJson = prefs.getString('projects');
-    if (projectsJson != null) {
-      final projectsList = jsonDecode(projectsJson) as List;
-      _projects = projectsList.map((json) => Project.fromJson(json)).toList();
-      notifyListeners();
-    }
-  }
-
-  void _saveProjects() async {
-    final prefs = await SharedPreferences.getInstance();
-    final projectsJson = _projects.map((project) => project.toJson()).toList();
-    await prefs.setString('projects', jsonEncode(projectsJson));
-  }
+  _ProjectDetailPageState createState() => _ProjectDetailPageState();
 }
 
 class ProjectsPage extends StatelessWidget {
@@ -699,9 +1069,9 @@ class ProjectsPage extends StatelessWidget {
           ),
         ],
       ),
-      body: Consumer<ProjectProvider>(
-        builder: (context, projectProvider, child) {
-          if (projectProvider.projects.isEmpty) {
+      body: Consumer<ProjectViewModel>(
+        builder: (context, projectVM, child) {
+          if (projectVM.projects.isEmpty) {
             return Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -720,9 +1090,9 @@ class ProjectsPage extends StatelessWidget {
           }
 
           return ListView.builder(
-            itemCount: projectProvider.projects.length,
+            itemCount: projectVM.projects.length,
             itemBuilder: (context, index) {
-              final project = projectProvider.projects[index];
+              final project = projectVM.projects[index];
               return ListTile(
                 leading: Icon(Icons.folder),
                 title: Text(project.name),
@@ -740,16 +1110,14 @@ class ProjectsPage extends StatelessWidget {
     );
   }
 
-  _openProject(BuildContext context, Project project) {
+  void _openProject(BuildContext context, Project project) {
     Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (_) => ProjectDetailPage(project: project),
-      ),
+      MaterialPageRoute(builder: (_) => ProjectDetailPage(project: project)),
     );
   }
 
-  _showCreateProjectDialog(BuildContext context) {
+  void _showCreateProjectDialog(BuildContext context) {
     final nameController = TextEditingController();
     final descriptionController = TextEditingController();
 
@@ -786,9 +1154,14 @@ class ProjectsPage extends StatelessWidget {
           TextButton(
             onPressed: () {
               if (nameController.text.isNotEmpty) {
-                Provider.of<ProjectProvider>(context, listen: false)
+                final authVM =
+                    Provider.of<AuthViewModel>(context, listen: false);
+                Provider.of<ProjectViewModel>(context, listen: false)
                     .createProject(
-                        nameController.text, descriptionController.text);
+                  nameController.text,
+                  descriptionController.text,
+                  authVM.currentUser!.id,
+                );
                 Navigator.pop(context);
               }
             },
@@ -799,7 +1172,7 @@ class ProjectsPage extends StatelessWidget {
     );
   }
 
-  _showProjectOptions(BuildContext context, Project project) {
+  void _showProjectOptions(BuildContext context, Project project) {
     showModalBottomSheet(
       context: context,
       builder: (context) => Column(
@@ -810,7 +1183,7 @@ class ProjectsPage extends StatelessWidget {
             title: Text('Edit'),
             onTap: () {
               Navigator.pop(context);
-              // Implement edit functionality
+              // TODO: Implement edit functionality
             },
           ),
           ListTile(
@@ -818,13 +1191,101 @@ class ProjectsPage extends StatelessWidget {
             title: Text('Delete', style: TextStyle(color: Colors.red)),
             onTap: () {
               Navigator.pop(context);
-              Provider.of<ProjectProvider>(context, listen: false)
-                  .deleteProject(project);
+              Provider.of<ProjectViewModel>(context, listen: false)
+                  .deleteProject(project.id);
             },
           ),
         ],
       ),
     );
+  }
+}
+
+class ProjectViewModel extends ChangeNotifier {
+  List<Project> _projects = [];
+  List<Folder> _folders = [];
+  bool _isLoading = false;
+
+  List<Folder> get folders => _folders;
+  bool get isLoading => _isLoading;
+  List<Project> get projects => _projects;
+
+  Future<void> createFolder(
+      String name, String projectId, String userId) async {
+    _isLoading = true;
+    notifyListeners();
+
+    try {
+      final folder = Folder(
+        id: const Uuid().v4(),
+        name: name,
+        projectId: projectId,
+        userId: userId,
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      );
+
+      await FirebaseService.createFolder(folder);
+    } catch (e) {
+      print('Error creating folder: $e');
+    }
+
+    _isLoading = false;
+    notifyListeners();
+  }
+
+  Future<void> createProject(
+      String name, String description, String userId) async {
+    _isLoading = true;
+    notifyListeners();
+
+    try {
+      final project = Project(
+        id: const Uuid().v4(),
+        name: name,
+        description: description,
+        userId: userId,
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      );
+
+      await FirebaseService.createProject(project);
+    } catch (e) {
+      print('Error creating project: $e');
+    }
+
+    _isLoading = false;
+    notifyListeners();
+  }
+
+  Future<void> deleteFolder(String folderId) async {
+    try {
+      await FirebaseService.deleteFolder(folderId);
+    } catch (e) {
+      print('Error deleting folder: $e');
+    }
+  }
+
+  Future<void> deleteProject(String projectId) async {
+    try {
+      await FirebaseService.deleteProject(projectId);
+    } catch (e) {
+      print('Error deleting project: $e');
+    }
+  }
+
+  void listenToFolders(String projectId) {
+    FirebaseService.getProjectFolders(projectId).listen((folders) {
+      _folders = folders;
+      notifyListeners();
+    });
+  }
+
+  void listenToProjects(String userId) {
+    FirebaseService.getUserProjects(userId).listen((projects) {
+      _projects = projects;
+      notifyListeners();
+    });
   }
 }
 
@@ -839,7 +1300,7 @@ class SettingsPage extends StatelessWidget {
         children: [
           ListTile(
             leading: Icon(Icons.key),
-            title: Text('API Key'),
+            title: Text('Update API Key'),
             subtitle: Text('Change your Claude API key'),
             onTap: () => _showApiKeyDialog(context),
           ),
@@ -848,13 +1309,13 @@ class SettingsPage extends StatelessWidget {
             title: Text('Theme'),
             subtitle: Text('App appearance'),
             onTap: () {
-              // Implement theme selection
+              // TODO: Implement theme selection
             },
           ),
           ListTile(
             leading: Icon(Icons.info),
             title: Text('About'),
-            subtitle: Text('Claude Chat Clone v1.0'),
+            subtitle: Text('Claude Chat Clone v2.0'),
             onTap: () => _showAboutDialog(context),
           ),
         ],
@@ -862,21 +1323,20 @@ class SettingsPage extends StatelessWidget {
     );
   }
 
-  _showAboutDialog(BuildContext context) {
+  void _showAboutDialog(BuildContext context) {
     showAboutDialog(
       context: context,
       applicationName: 'Claude Chat Clone',
-      applicationVersion: '1.0.0',
+      applicationVersion: '2.0.0',
       children: [
-        Text('A lightweight Claude.ai alternative using the Anthropic API.'),
+        Text(
+            'A lightweight Claude.ai alternative using the Anthropic API with Firebase backend.'),
       ],
     );
   }
 
-  _showApiKeyDialog(BuildContext context) async {
-    final prefs = await SharedPreferences.getInstance();
-    final currentKey = prefs.getString('claude_api_key') ?? '';
-    final controller = TextEditingController(text: currentKey);
+  void _showApiKeyDialog(BuildContext context) {
+    final controller = TextEditingController();
 
     showDialog(
       context: context,
@@ -896,11 +1356,10 @@ class SettingsPage extends StatelessWidget {
             child: Text('Cancel'),
           ),
           TextButton(
-            onPressed: () async {
+            onPressed: () {
               final apiKey = controller.text.trim();
               if (apiKey.isNotEmpty) {
-                await prefs.setString('claude_api_key', apiKey);
-                Provider.of<ChatProvider>(context, listen: false)
+                Provider.of<ChatViewModel>(context, listen: false)
                     .setApiKey(apiKey);
                 Navigator.pop(context);
                 ScaffoldMessenger.of(context).showSnackBar(
@@ -924,24 +1383,47 @@ class _ChatPageState extends State<ChatPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Consumer<ChatProvider>(
-          builder: (context, chatProvider, child) {
-            return Text(chatProvider.currentChat?.title ?? 'Chat');
+        title: Consumer<ChatViewModel>(
+          builder: (context, chatVM, child) {
+            return Text(chatVM.currentChat?.title ?? 'Chat');
           },
         ),
         actions: [
-          Consumer<ChatProvider>(
-            builder: (context, chatProvider, child) {
-              return DropdownButton<String>(
-                value: chatProvider.selectedModel,
-                items: chatProvider.availableModels.map((model) {
-                  return DropdownMenuItem(value: model, child: Text(model));
-                }).toList(),
-                onChanged: (model) {
-                  if (model != null) {
-                    chatProvider.setModel(model);
-                  }
-                },
+          Consumer<ChatViewModel>(
+            builder: (context, chatVM, child) {
+              return Container(
+                margin: EdgeInsets.only(right: 8),
+                padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF2C2C2E),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: const Color(0xFF3A3A3C)),
+                ),
+                child: DropdownButton<String>(
+                  value: chatVM.selectedModel,
+                  items: chatVM.availableModels.map((model) {
+                    String displayName = model;
+                    if (model.contains('sonnet')) displayName = 'Claude Sonnet';
+                    if (model.contains('haiku')) displayName = 'Claude Haiku';
+                    if (model.contains('opus')) displayName = 'Claude Opus';
+
+                    return DropdownMenuItem(
+                      value: model,
+                      child: Text(
+                        displayName,
+                        style: TextStyle(color: Colors.white, fontSize: 14),
+                      ),
+                    );
+                  }).toList(),
+                  onChanged: (model) {
+                    if (model != null) {
+                      chatVM.setModel(model);
+                    }
+                  },
+                  underline: SizedBox.shrink(),
+                  icon: Icon(Icons.keyboard_arrow_down, color: Colors.grey),
+                  dropdownColor: const Color(0xFF2C2C2E),
+                ),
               );
             },
           ),
@@ -950,14 +1432,13 @@ class _ChatPageState extends State<ChatPage> {
       body: Column(
         children: [
           Expanded(
-            child: Consumer<ChatProvider>(
-              builder: (context, chatProvider, child) {
-                final messages = chatProvider.currentChat?.messages ?? [];
+            child: Consumer<ChatViewModel>(
+              builder: (context, chatVM, child) {
                 return ListView.builder(
                   controller: _scrollController,
-                  itemCount: messages.length,
+                  itemCount: chatVM.currentMessages.length,
                   itemBuilder: (context, index) {
-                    final message = messages[index];
+                    final message = chatVM.currentMessages[index];
                     return MessageBubble(message: message);
                   },
                 );
@@ -971,44 +1452,72 @@ class _ChatPageState extends State<ChatPage> {
   }
 
   Widget _buildMessageInput() {
-    return Consumer<ChatProvider>(
-      builder: (context, chatProvider, child) {
+    return Consumer<ChatViewModel>(
+      builder: (context, chatVM, child) {
         return Container(
           padding: EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: Theme.of(context).scaffoldBackgroundColor,
-            border: Border(top: BorderSide(color: Colors.grey.shade300)),
+            color: const Color(0xFF1C1C1E),
+            border: Border(
+              top: BorderSide(color: const Color(0xFF3A3A3C), width: 0.5),
+            ),
           ),
           child: Row(
             children: [
               IconButton(
-                icon: Icon(Icons.attach_file),
-                onPressed: chatProvider.isLoading ? null : _pickFile,
+                icon: Icon(Icons.attach_file, color: Colors.grey),
+                onPressed: chatVM.isLoading ? null : _pickFile,
               ),
               Expanded(
                 child: TextField(
                   controller: _messageController,
                   decoration: InputDecoration(
-                    hintText: 'Type a message...',
+                    hintText: 'Reply to Claude...',
+                    hintStyle: TextStyle(color: Colors.grey),
                     border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(25),
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: const Color(0xFF3A3A3C)),
                     ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: const Color(0xFF3A3A3C)),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: const Color(0xFFBD5D3A)),
+                    ),
+                    filled: true,
+                    fillColor: const Color(0xFF2C2C2E),
+                    contentPadding:
+                        EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                   ),
+                  style: TextStyle(color: Colors.white),
                   maxLines: null,
-                  enabled: !chatProvider.isLoading,
+                  enabled: !chatVM.isLoading,
                   onSubmitted: (text) => _sendMessage(),
                 ),
               ),
               SizedBox(width: 8),
-              IconButton(
-                icon: chatProvider.isLoading
-                    ? SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : Icon(Icons.send),
-                onPressed: chatProvider.isLoading ? null : _sendMessage,
+              Container(
+                decoration: BoxDecoration(
+                  color: chatVM.isLoading
+                      ? Colors.grey.shade600
+                      : const Color(0xFFBD5D3A),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: IconButton(
+                  icon: chatVM.isLoading
+                      ? SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : Icon(Icons.send, color: Colors.white),
+                  onPressed: chatVM.isLoading ? null : _sendMessage,
+                ),
               ),
             ],
           ),
@@ -1017,19 +1526,21 @@ class _ChatPageState extends State<ChatPage> {
     );
   }
 
-  _pickFile() async {
+  void _pickFile() async {
     FilePickerResult? result = await FilePicker.platform.pickFiles(
       type: FileType.any,
       allowMultiple: false,
     );
 
     if (result != null) {
-      final file = result.files.single;
-      Provider.of<ChatProvider>(context, listen: false).addAttachment(file);
+      // TODO: Handle file attachment
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('File attachment coming soon!')),
+      );
     }
   }
 
-  _scrollToBottom() {
+  void _scrollToBottom() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_scrollController.hasClients) {
         _scrollController.animateTo(
@@ -1041,13 +1552,100 @@ class _ChatPageState extends State<ChatPage> {
     });
   }
 
-  _sendMessage() {
+  void _sendMessage() {
     final text = _messageController.text.trim();
     if (text.isNotEmpty) {
-      Provider.of<ChatProvider>(context, listen: false).sendMessage(text);
+      Provider.of<ChatViewModel>(context, listen: false).sendMessage(text);
       _messageController.clear();
       _scrollToBottom();
     }
+  }
+}
+
+class _FolderDetailPageState extends State<FolderDetailPage> {
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(widget.folder.name),
+        actions: [
+          IconButton(
+            icon: Icon(Icons.add),
+            onPressed: () => _createChatInFolder(context),
+          ),
+        ],
+      ),
+      body: Consumer<ChatViewModel>(
+        builder: (context, chatVM, child) {
+          final folderChats = chatVM.chats
+              .where((chat) => chat.folderId == widget.folder.id)
+              .toList();
+
+          if (folderChats.isEmpty) {
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.chat_bubble_outline, size: 64, color: Colors.grey),
+                  SizedBox(height: 16),
+                  Text('No chats in this folder yet'),
+                  SizedBox(height: 16),
+                  ElevatedButton(
+                    onPressed: () => _createChatInFolder(context),
+                    child: Text('Start Chat'),
+                  ),
+                ],
+              ),
+            );
+          }
+
+          return ListView.builder(
+            itemCount: folderChats.length,
+            itemBuilder: (context, index) {
+              final chat = folderChats[index];
+              return ChatTile(
+                chat: chat,
+                onTap: () => _openChat(context, chat),
+              );
+            },
+          );
+        },
+      ),
+    );
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    final chatVM = Provider.of<ChatViewModel>(context, listen: false);
+    chatVM.listenToFolderChats(widget.folder.id);
+  }
+
+  void _createChatInFolder(BuildContext context) async {
+    final authVM = Provider.of<AuthViewModel>(context, listen: false);
+    final chatVM = Provider.of<ChatViewModel>(context, listen: false);
+
+    final chat = await chatVM.createNewChat(
+      authVM.currentUser!.id,
+      projectId: widget.folder.projectId,
+      folderId: widget.folder.id,
+    );
+    chatVM.setCurrentChat(chat);
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => ChatPage()),
+    );
+  }
+
+  void _openChat(BuildContext context, Chat chat) {
+    final chatVM = Provider.of<ChatViewModel>(context, listen: false);
+    chatVM.setCurrentChat(chat);
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => ChatPage()),
+    );
   }
 }
 
@@ -1057,7 +1655,7 @@ class _HomePageState extends State<HomePage> {
   @override
   Widget build(BuildContext context) {
     final List<Widget> pages = [
-      ChatListPage(),
+      ChatsPage(),
       ProjectsPage(),
       SettingsPage(),
     ];
@@ -1068,8 +1666,6 @@ class _HomePageState extends State<HomePage> {
         currentIndex: _selectedIndex,
         onTap: (index) => setState(() => _selectedIndex = index),
         items: [
-          BottomNavigationBarItem(icon: Icon(Icons.chat), label: 'Chats'),
-          BottomNavigationBarItem(icon: Icon(Icons.folder), label: 'Projects'),
           BottomNavigationBarItem(
               icon: Icon(Icons.settings), label: 'Settings'),
         ],
@@ -1080,121 +1676,202 @@ class _HomePageState extends State<HomePage> {
   @override
   void initState() {
     super.initState();
-    _loadApiKey();
-    Provider.of<ProjectProvider>(context, listen: false).loadProjects();
-    Provider.of<ChatProvider>(context, listen: false).loadChats();
-  }
+    final authVM = Provider.of<AuthViewModel>(context, listen: false);
+    final projectVM = Provider.of<ProjectViewModel>(context, listen: false);
+    final chatVM = Provider.of<ChatViewModel>(context, listen: false);
 
-  _loadApiKey() async {
-    final prefs = await SharedPreferences.getInstance();
-    final apiKey = prefs.getString('claude_api_key');
-    if (apiKey == null) {
-      _showApiKeyDialog();
-    } else {
-      Provider.of<ChatProvider>(context, listen: false).setApiKey(apiKey);
-
-      // Show proxy instructions for web users
-      if (kIsWeb) {
-        _showWebInstructions();
-      }
+    if (authVM.currentUser != null) {
+      projectVM.listenToProjects(authVM.currentUser!.id);
+      chatVM.listenToUserChats(authVM.currentUser!.id);
     }
   }
+}
 
-  _showApiKeyDialog() {
-    final controller = TextEditingController();
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => AlertDialog(
-        title: Text('Enter Claude API Key'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text('Enter your Anthropic API key to get started:'),
-            SizedBox(height: 16),
-            TextField(
-              controller: controller,
-              decoration: InputDecoration(
-                hintText: 'sk-ant-api03-...',
-                border: OutlineInputBorder(),
-              ),
-              obscureText: true,
-            ),
-          ],
-        ),
+class _ProjectDetailPageState extends State<ProjectDetailPage> {
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(widget.project.name),
         actions: [
-          TextButton(
-            onPressed: () async {
-              final apiKey = controller.text.trim();
-              if (apiKey.isNotEmpty) {
-                final prefs = await SharedPreferences.getInstance();
-                await prefs.setString('claude_api_key', apiKey);
-                Provider.of<ChatProvider>(context, listen: false)
-                    .setApiKey(apiKey);
-                Navigator.pop(context);
-              }
-            },
-            child: Text('Save'),
+          IconButton(
+            icon: Icon(Icons.create_new_folder),
+            onPressed: () => _showCreateFolderDialog(context),
+          ),
+          IconButton(
+            icon: Icon(Icons.add),
+            onPressed: () => _createChatInProject(context),
+          ),
+        ],
+      ),
+      body: Column(
+        children: [
+          // Project Description
+          Padding(
+            padding: EdgeInsets.all(16),
+            child: Card(
+              child: Padding(
+                padding: EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Description',
+                        style: Theme.of(context).textTheme.titleMedium),
+                    SizedBox(height: 8),
+                    Text(widget.project.description),
+                  ],
+                ),
+              ),
+            ),
+          ),
+
+          // Folders and Chats
+          Expanded(
+            child: Consumer2<ProjectViewModel, ChatViewModel>(
+              builder: (context, projectVM, chatVM, child) {
+                final folders = projectVM.folders;
+                final projectChats = chatVM.chats
+                    .where((chat) =>
+                        chat.projectId == widget.project.id &&
+                        chat.folderId == null)
+                    .toList();
+
+                return ListView(
+                  children: [
+                    // Folders
+                    if (folders.isNotEmpty) ...[
+                      Padding(
+                        padding:
+                            EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        child: Text('Folders',
+                            style: Theme.of(context).textTheme.titleSmall),
+                      ),
+                      ...folders.map((folder) => FolderTile(
+                            folder: folder,
+                            onTap: () => _openFolder(context, folder),
+                          )),
+                    ],
+
+                    // Direct chats in project
+                    if (projectChats.isNotEmpty) ...[
+                      Padding(
+                        padding:
+                            EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        child: Text('Chats',
+                            style: Theme.of(context).textTheme.titleSmall),
+                      ),
+                      ...projectChats.map((chat) => ChatTile(
+                            chat: chat,
+                            onTap: () => _openChat(context, chat),
+                          )),
+                    ],
+
+                    if (folders.isEmpty && projectChats.isEmpty)
+                      Center(
+                        child: Padding(
+                          padding: EdgeInsets.all(32),
+                          child: Column(
+                            children: [
+                              Icon(Icons.folder_open,
+                                  size: 64, color: Colors.grey),
+                              SizedBox(height: 16),
+                              Text('No folders or chats yet'),
+                              SizedBox(height: 16),
+                              ElevatedButton(
+                                onPressed: () => _createChatInProject(context),
+                                child: Text('Start Chat'),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                  ],
+                );
+              },
+            ),
           ),
         ],
       ),
     );
   }
 
-  _showWebInstructions() {
-    Future.delayed(Duration(seconds: 1), () {
-      showDialog(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: Row(
-            children: [
-              Icon(Icons.info, color: const Color(0xFFBD5D3A)),
-              SizedBox(width: 8),
-              Text('Web Setup Required'),
-            ],
+  @override
+  void initState() {
+    super.initState();
+    final projectVM = Provider.of<ProjectViewModel>(context, listen: false);
+    projectVM.listenToFolders(widget.project.id);
+  }
+
+  void _createChatInProject(BuildContext context) async {
+    final authVM = Provider.of<AuthViewModel>(context, listen: false);
+    final chatVM = Provider.of<ChatViewModel>(context, listen: false);
+
+    final chat = await chatVM.createNewChat(
+      authVM.currentUser!.id,
+      projectId: widget.project.id,
+    );
+    chatVM.setCurrentChat(chat);
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => ChatPage()),
+    );
+  }
+
+  void _openChat(BuildContext context, Chat chat) {
+    final chatVM = Provider.of<ChatViewModel>(context, listen: false);
+    chatVM.setCurrentChat(chat);
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => ChatPage()),
+    );
+  }
+
+  void _openFolder(BuildContext context, Folder folder) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => FolderDetailPage(folder: folder)),
+    );
+  }
+
+  void _showCreateFolderDialog(BuildContext context) {
+    final nameController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Create Folder'),
+        content: TextField(
+          controller: nameController,
+          decoration: InputDecoration(
+            labelText: 'Folder Name',
+            border: OutlineInputBorder(),
           ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                  'To use Claude API in web browser, you need to run a local proxy server:'),
-              SizedBox(height: 12),
-              Container(
-                padding: EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.grey.shade300),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('1. Install Node.js from nodejs.org',
-                        style: TextStyle(fontSize: 12)),
-                    Text('2. Save proxy_server.js and package.json',
-                        style: TextStyle(fontSize: 12)),
-                    Text('3. Run: npm install && npm start',
-                        style: TextStyle(fontSize: 12)),
-                    Text('4. Keep proxy running while using app',
-                        style: TextStyle(fontSize: 12)),
-                  ],
-                ),
-              ),
-              SizedBox(height: 12),
-              Text('Or run the app on mobile/desktop to avoid this step!',
-                  style: TextStyle(
-                      fontStyle: FontStyle.italic,
-                      color: Colors.grey.shade600)),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: Text('Got it!'),
-            ),
-          ],
         ),
-      );
-    });
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () {
+              if (nameController.text.isNotEmpty) {
+                final authVM =
+                    Provider.of<AuthViewModel>(context, listen: false);
+                Provider.of<ProjectViewModel>(context, listen: false)
+                    .createFolder(
+                  nameController.text,
+                  widget.project.id,
+                  authVM.currentUser!.id,
+                );
+                Navigator.pop(context);
+              }
+            },
+            child: Text('Create'),
+          ),
+        ],
+      ),
+    );
   }
 }
