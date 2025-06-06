@@ -60,4 +60,5 @@ class DefaultFirebaseOptions {
     databaseURL: 'https://flaude-0625-default-rtdb.europe-west1.firebasedatabase.app',
     storageBucket: 'flaude-0625.firebasestorage.app',
   );
+
 }
