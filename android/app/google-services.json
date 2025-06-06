@@ -1,0 +1,30 @@
+{
+  "project_info": {
+    "project_number": "270787491728",
+    "firebase_url": "https://flaude-0625-default-rtdb.europe-west1.firebasedatabase.app",
+    "project_id": "flaude-0625",
+    "storage_bucket": "flaude-0625.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:270787491728:android:257e0f6b252aecaad32515",
+        "android_client_info": {
+          "package_name": "com.example.claude_two"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBf9Pt7lh0EOGiM2O2K2q6A_Gx8YHX4mFc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
