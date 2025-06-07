@@ -22,6 +22,7 @@ class MainScreen extends StatefulWidget {
 }
 
 class MainScreenState extends State<MainScreen> {
+  double drawerWidth = 300; // Width of the left navigation drawer
   String _currentView = 'chat'; // 'chat', 'projects', 'new_chat'
   String? _selectedChatId;
   bool _showArtifactDetail = false;
@@ -58,6 +59,8 @@ class MainScreenState extends State<MainScreen> {
       'preview': 'App structure and patterns...'
     },
   ];
+
+  bool get drawerIsOpen => drawerWidth == 300;
 
   @override
   Widget build(BuildContext context) {
@@ -263,57 +266,93 @@ class MainScreenState extends State<MainScreen> {
 
   Widget _buildNavigationDrawer() {
     return Container(
-      width: 280,
+      width: drawerWidth.toDouble(),
       color: Color(0xFF1F1E1D),
       child: Column(
         children: [
           // Header
           Container(
-            padding: EdgeInsets.all(16),
+            padding: EdgeInsets.only(
+                top: 16,
+                bottom: 32,
+                right: drawerIsOpen ? 16 : 8,
+                left: drawerIsOpen ? 8 : 8),
             child: Row(
               children: [
-                Icon(Icons.chat_bubble_outline, color: Colors.white, size: 24),
-                SizedBox(width: 12),
-                Text(
-                  'Claude Clone',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600,
-                  ),
+                IconButton(
+                  onPressed: () {
+                    setState(() {
+                      drawerWidth = drawerWidth == 300 ? 60 : 300;
+                    });
+                  },
+                  icon: Icon(
+                      drawerIsOpen
+                          ? Icons.menu_open_outlined
+                          : Icons.menu_outlined,
+                      color: Colors.white,
+                      size: 24),
                 ),
+                if (drawerIsOpen) ...[
+                  SizedBox(width: 12),
+                  Text(
+                    'Flaude',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
               ],
             ),
           ),
 
           // New Chat Button
           Container(
-            margin: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            child: SizedBox(
-              width: double.infinity,
-              child: GestureDetector(
-                onTap: () => _handleNavigation('new_chat'),
-                child: Row(
-                  children: [
-                    Icon(Icons.add_circle, size: 24),
-                    SizedBox(
-                      width: 8,
+            padding: EdgeInsets.symmetric(horizontal: 18, vertical: 8),
+            child: drawerIsOpen
+                ? GestureDetector(
+                    onTap: () => _handleNavigation('new_chat'),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.add_circle,
+                          color: Theme.of(context).colorScheme.primary,
+                          size: 24,
+                        ),
+                        SizedBox(width: 8),
+                        Text(
+                          'New Chat',
+                          style: TextStyle(
+                            color: Theme.of(context).colorScheme.primary,
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
                     ),
-                    Text(
-                      'New Chat',
-                      style: TextStyle(
-                        color: Theme.of(context).colorScheme.primary,
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
+                  )
+                : Container(
+                    height: 25,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        onTap: () => _handleNavigation('new_chat'),
+                        borderRadius: BorderRadius.circular(8),
+                        child: Center(
+                          child: Icon(
+                            Icons.add_circle,
+                            color: Theme.of(context).colorScheme.primary,
+                            size: 24,
+                          ),
+                        ),
                       ),
                     ),
-                  ],
-                ),
-              ),
-            ),
+                  ),
           ),
-
-          Divider(color: Colors.grey[700], height: 1),
 
           // Navigation Items
           Expanded(
@@ -332,13 +371,31 @@ class MainScreenState extends State<MainScreen> {
                   isSelected: _currentView == 'projects',
                   onTap: () => _handleNavigation('projects'),
                 ),
+                if (drawerIsOpen) ...[
+                  // Starred Chats Section
+                  if (_starredChats.isNotEmpty) ...[
+                    Padding(
+                      padding: EdgeInsets.fromLTRB(16, 8, 16, 8),
+                      child: Text(
+                        'Starred',
+                        style: TextStyle(
+                          color: Colors.grey[400],
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                    ..._starredChats.map((chat) => _buildChatItem(
+                          chat: chat,
+                          isStarred: true,
+                        )),
+                  ],
 
-                // Starred Chats Section
-                if (_starredChats.isNotEmpty) ...[
+                  // Recent Chats Section
                   Padding(
-                    padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
+                    padding: EdgeInsets.fromLTRB(16, 8, 16, 8),
                     child: Text(
-                      'Starred',
+                      'Recent Chats',
                       style: TextStyle(
                         color: Colors.grey[400],
                         fontSize: 12,
@@ -346,25 +403,8 @@ class MainScreenState extends State<MainScreen> {
                       ),
                     ),
                   ),
-                  ..._starredChats.map((chat) => _buildChatItem(
-                        chat: chat,
-                        isStarred: true,
-                      )),
+                  ..._recentChats.map((chat) => _buildChatItem(chat: chat)),
                 ],
-
-                // Recent Chats Section
-                Padding(
-                  padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
-                  child: Text(
-                    'Recent Chats',
-                    style: TextStyle(
-                      color: Colors.grey[400],
-                      fontSize: 12,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ),
-                ..._recentChats.map((chat) => _buildChatItem(chat: chat)),
               ],
             ),
           ),
@@ -381,29 +421,51 @@ class MainScreenState extends State<MainScreen> {
   }) {
     return Container(
       margin: EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-      child: ListTile(
-        leading: Icon(
-          icon,
-          color: isSelected ? Color(0xffbd5d3a) : Colors.grey[400],
-          size: 20,
-        ),
-        title: Text(
-          title,
-          style: TextStyle(
-            color: isSelected ? Colors.white : Colors.grey[400],
-            fontSize: 14,
-            fontWeight: isSelected ? FontWeight.w500 : FontWeight.normal,
-          ),
-        ),
-        selected: isSelected,
-        selectedTileColor: Color(0xFF2d2d2d),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(8),
-        ),
-        onTap: onTap,
-        dense: true,
-        contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 0),
-      ),
+      child: drawerIsOpen
+          ? ListTile(
+              leading: Icon(
+                icon,
+                color: isSelected ? Color(0xffbd5d3a) : Colors.grey[400],
+                size: 20,
+              ),
+              title: Text(
+                title,
+                style: TextStyle(
+                  color: isSelected ? Colors.white : Colors.grey[400],
+                  fontSize: 14,
+                  fontWeight: isSelected ? FontWeight.w500 : FontWeight.normal,
+                ),
+              ),
+              selected: isSelected,
+              selectedTileColor: Color(0xFF2d2d2d),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+              onTap: onTap,
+              dense: true,
+              contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 0),
+            )
+          : Container(
+              height: 40,
+              decoration: BoxDecoration(
+                color: isSelected ? Color(0xFF2d2d2d) : null,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: onTap,
+                  borderRadius: BorderRadius.circular(8),
+                  child: Center(
+                    child: Icon(
+                      icon,
+                      color: isSelected ? Color(0xffbd5d3a) : Colors.grey[400],
+                      size: 20,
+                    ),
+                  ),
+                ),
+              ),
+            ),
     );
   }
 
