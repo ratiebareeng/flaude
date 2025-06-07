@@ -212,16 +212,11 @@ class MainScreenState extends State<MainScreen> {
     return Container(
       margin: EdgeInsets.symmetric(horizontal: 8, vertical: 1),
       child: ListTile(
-        leading: Icon(
-          isStarred ? Icons.star : Icons.chat_bubble_outline,
-          color: isSelected ? Color(0xffbd5d3a) : Colors.grey[500],
-          size: 16,
-        ),
         title: Text(
           chat['title'] ?? '',
           style: TextStyle(
             color: isSelected ? Colors.white : Colors.grey[300],
-            fontSize: 13,
+            fontSize: 14,
             fontWeight: isSelected ? FontWeight.w500 : FontWeight.normal,
           ),
           maxLines: 1,
@@ -326,13 +321,13 @@ class MainScreenState extends State<MainScreen> {
               padding: EdgeInsets.symmetric(vertical: 8),
               children: [
                 _buildNavItem(
-                  icon: Icons.chat,
+                  icon: Icons.chat_outlined,
                   title: 'Chats',
                   isSelected: _currentView == 'chat',
                   onTap: () => _handleNavigation('chat'),
                 ),
                 _buildNavItem(
-                  icon: Icons.folder,
+                  icon: Icons.folder_outlined,
                   title: 'Projects',
                   isSelected: _currentView == 'projects',
                   onTap: () => _handleNavigation('projects'),
