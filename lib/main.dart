@@ -296,17 +296,23 @@ class MainScreenState extends State<MainScreen> {
             margin: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             child: SizedBox(
               width: double.infinity,
-              child: ElevatedButton.icon(
-                onPressed: () => _handleNavigation('new_chat'),
-                icon: Icon(Icons.add, size: 18),
-                label: Text('New Chat'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Color(0xffbd5d3a),
-                  foregroundColor: Colors.white,
-                  padding: EdgeInsets.symmetric(vertical: 12),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
+              child: GestureDetector(
+                onTap: () => _handleNavigation('new_chat'),
+                child: Row(
+                  children: [
+                    Icon(Icons.add_circle, size: 24),
+                    SizedBox(
+                      width: 8,
+                    ),
+                    Text(
+                      'New Chat',
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.primary,
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),
