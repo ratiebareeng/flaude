@@ -1,4 +1,6 @@
 // widgets/create_project_dialog.dart
+import 'package:claude_chat_clone/models/project.dart';
+import 'package:claude_chat_clone/services/project_service.dart';
 import 'package:claude_chat_clone/viewmodel/app_state.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -46,14 +48,34 @@ class _CreateProjectDialogState extends State<CreateProjectDialog> {
           child: Text('Cancel'),
         ),
         ElevatedButton(
-          onPressed: () {
-            if (_titleController.text.trim().isNotEmpty) {
-              context.read<AppState>().createProject(
-                    _titleController.text.trim(),
-                    _descriptionController.text.trim(),
-                  );
-              Navigator.of(context).pop();
+          onPressed: () async {
+            // Validate title input
+            if (_titleController.text.trim().isEmpty) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('Project title cannot be empty')),
+              );
+              return;
             }
+
+            bool result = await ProjectService.instance.createProject(
+              Project(
+                id: DateTime.now().millisecondsSinceEpoch.toString(),
+                name: _titleController.text.trim(),
+                description: _descriptionController.text.trim(),
+                createdAt: DateTime.now(),
+                updatedAt: DateTime.now(),
+              ),
+            );
+
+            if (!result || !context.mounted) {
+              return;
+            }
+
+            context.read<AppState>().createProject(
+                  _titleController.text.trim(),
+                  _descriptionController.text.trim(),
+                );
+            Navigator.of(context).pop();
           },
           child: Text('Create'),
         ),
