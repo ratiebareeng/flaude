@@ -1,3 +1,8 @@
+import 'dart:convert';
+import 'dart:developer';
+
+import 'package:firebase_core/firebase_core.dart';
+
 import '../models/project.dart';
 import '../services/firebase_rtdb_service.dart';
 
@@ -8,73 +13,139 @@ class ProjectRepository {
   ProjectRepository(this._rtdbService);
 
   /// Create a new project
-  Future<void> createProject(Project project) async {
-    final path = '$_projectsPath/${project.id}';
-    await _rtdbService.writeData(path, project.toJson());
+  Future<bool> createProject(Project project) async {
+    try {
+      final path = '$_projectsPath/${project.id}';
+      await _rtdbService.writeData(path, project.toJson());
+      return true;
+    } on FirebaseException catch (e) {
+      log('Firebase error creating project ${project.id}: ${e.message}');
+      return false;
+    } catch (e) {
+      log('Unexpected error creating project ${project.id}: $e');
+      return false;
+    }
   }
 
   /// Delete a project
-  Future<void> deleteProject(String projectId) async {
-    final path = '$_projectsPath/$projectId';
-    await _rtdbService.deleteData(path);
+  Future<bool> deleteProject(String projectId) async {
+    try {
+      final path = '$_projectsPath/$projectId';
+      await _rtdbService.deleteData(path);
+      return true;
+    } on FirebaseException catch (e) {
+      log('Firebase error deleting project $projectId: ${e.message}');
+      return false;
+    } catch (e) {
+      log('Unexpected error deleting project $projectId: $e');
+      return false;
+    }
   }
 
   /// Listen to all projects changes
-  Stream<List<Project>> listenToAllProjects() {
+  Stream<(bool, List<Project>?)> listenToAllProjects() {
     return _rtdbService.listenToPath(_projectsPath).map((event) {
-      if (event.snapshot.exists && event.snapshot.value != null) {
-        final data = Map<String, dynamic>.from(event.snapshot.value as Map);
-        return data.entries
+      try {
+        if (!event.snapshot.exists || event.snapshot.value == null) {
+          return (true, <Project>[]);
+        }
+        final data = Map<String, dynamic>.from(
+            jsonDecode(jsonEncode(event.snapshot.value)) as Map);
+        final projects = data.entries
             .map((entry) =>
                 Project.fromJson(Map<String, dynamic>.from(entry.value)))
             .toList();
+        return (true, projects);
+      } on FirebaseException catch (e) {
+        log('Firebase error listening to all projects: ${e.message}');
+        return (false, null);
+      } catch (e) {
+        log('Unexpected error listening to all projects: $e');
+        return (false, null);
       }
-      return <Project>[];
     });
   }
 
   /// Listen to a single project changes
-  Stream<Project?> listenToProject(String projectId) {
+  Stream<(bool, Project?)> listenToProject(String projectId) {
     final path = '$_projectsPath/$projectId';
     return _rtdbService.listenToPath(path).map((event) {
-      if (event.snapshot.exists && event.snapshot.value != null) {
-        final data = Map<String, dynamic>.from(event.snapshot.value as Map);
-        return Project.fromJson(data);
+      try {
+        if (!event.snapshot.exists || event.snapshot.value == null) {
+          return (true, null);
+        }
+        final data = Map<String, dynamic>.from(
+            jsonDecode(jsonEncode(event.snapshot.value)) as Map);
+        final project = Project.fromJson(data);
+        return (true, project);
+      } on FirebaseException catch (e) {
+        log('Firebase error listening to project $projectId: ${e.message}');
+        return (false, null);
+      } catch (e) {
+        log('Unexpected error listening to project $projectId: $e');
+        return (false, null);
       }
-      return null;
     });
   }
 
   /// Read all projects
-  Future<List<Project>> readAllProjects() async {
-    final snapshot = await _rtdbService.readPath(_projectsPath);
+  Future<(bool, List<Project>?)> readAllProjects() async {
+    try {
+      final snapshot = await _rtdbService.readPath(_projectsPath);
 
-    if (snapshot.exists && snapshot.value != null) {
-      final data = Map<String, dynamic>.from(snapshot.value as Map);
-      return data.entries
+      if (!snapshot.exists || snapshot.value == null) {
+        return (true, <Project>[]);
+      }
+      final data = Map<String, dynamic>.from(
+          jsonDecode(jsonEncode(snapshot.value)) as Map);
+      final projects = data.entries
           .map((entry) =>
               Project.fromJson(Map<String, dynamic>.from(entry.value)))
           .toList();
+      return (true, projects);
+    } on FirebaseException catch (e) {
+      log('Firebase error reading all projects: ${e.message}');
+      return (false, null);
+    } catch (e) {
+      log('Unexpected error reading all projects: $e');
+      return (false, null);
     }
-    return [];
   }
 
   /// Read a single project
-  Future<Project?> readProject(String projectId) async {
-    final path = '$_projectsPath/$projectId';
-    final snapshot = await _rtdbService.readPath(path);
+  Future<(bool, Project?)> readProject(String projectId) async {
+    try {
+      final path = '$_projectsPath/$projectId';
+      final snapshot = await _rtdbService.readPath(path);
 
-    if (snapshot.exists && snapshot.value != null) {
+      if (!snapshot.exists && snapshot.value == null) {
+        return (true, null);
+      }
       final data = Map<String, dynamic>.from(snapshot.value as Map);
-      return Project.fromJson(data);
+      final project = Project.fromJson(data);
+      return (true, project);
+    } on FirebaseException catch (e) {
+      log('Firebase error reading project $projectId: ${e.message}');
+      return (false, null);
+    } catch (e) {
+      log('Unexpected error reading project $projectId: $e');
+      return (false, null);
     }
-    return null;
   }
 
   /// Update an existing project
-  Future<void> updateProject(Project project) async {
-    final updatedProject = project.copyWith(updatedAt: DateTime.now());
-    final path = '$_projectsPath/${project.id}';
-    await _rtdbService.updateData(path, updatedProject.toJson());
+  Future<bool> updateProject(Project project) async {
+    try {
+      final updatedProject = project.copyWith(updatedAt: DateTime.now());
+      final path = '$_projectsPath/${project.id}';
+      await _rtdbService.updateData(path, updatedProject.toJson());
+      return true;
+    } on FirebaseException catch (e) {
+      log('Firebase error updating project ${project.id}: ${e.message}');
+      return false;
+    } catch (e) {
+      log('Unexpected error updating project ${project.id}: $e');
+      return false;
+    }
   }
 }
