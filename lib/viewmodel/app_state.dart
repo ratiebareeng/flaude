@@ -53,27 +53,21 @@ class AppState extends ChangeNotifier {
       projectId: projectId,
     );
 
-    if (projectId != null) {
-      final projectIndex = _projects.indexWhere((p) => p.id == projectId);
-      if (projectIndex != -1) {
-        _projects[projectIndex].chats.add(chat);
-      }
-    } else {
-      _chats.add(chat);
-    }
+    _chats.add(chat);
 
     _currentChat = chat;
     _saveData();
     notifyListeners();
   }
 
-  void createProject(String title, String description) {
+  void createProject(String name, String description) {
+    final now = DateTime.now();
     final project = Project(
       id: _uuid.v4(),
-      title: title,
+      name: name,
       description: description,
-      updatedAt: DateTime.now(),
-      chats: [],
+      createdAt: now,
+      updatedAt: now,
     );
     _projects.add(project);
     _saveData();

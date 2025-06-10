@@ -138,7 +138,7 @@ class ProjectsScreen extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                project.title,
+                project.name,
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.w600,
