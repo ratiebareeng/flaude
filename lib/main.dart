@@ -1,5 +1,6 @@
 // main.dart
 import 'package:claude_chat_clone/screens/screens.dart';
+import 'package:claude_chat_clone/services/global_keys.dart';
 import 'package:claude_chat_clone/viewmodel/app_state.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -500,6 +501,7 @@ class MyApp extends StatelessWidget {
       create: (context) => AppState(),
       child: MaterialApp(
         title: 'Claude Clone',
+        scaffoldMessengerKey: scaffoldMessengerKey,
         theme: ThemeData.dark().copyWith(
           colorScheme: ColorScheme.fromSeed(
               seedColor: Color(0xffda7756), primary: Color(0xffbd5d3a)),
