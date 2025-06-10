@@ -1,7 +1,15 @@
 import 'package:firebase_database/firebase_database.dart';
 
 class FirebaseRTDBService {
+  static final FirebaseRTDBService _instance = FirebaseRTDBService._internal();
+
+  static FirebaseRTDBService get instance => _instance;
+
   final FirebaseDatabase _database = FirebaseDatabase.instance;
+
+  factory FirebaseRTDBService() => _instance;
+
+  FirebaseRTDBService._internal();
 
   /// Delete data at a specific path
   Future<void> deleteData(String path) async {
