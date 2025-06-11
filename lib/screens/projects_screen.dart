@@ -59,7 +59,8 @@ class ProjectsScreen extends StatelessWidget {
             child: TextField(
               decoration: InputDecoration(
                 hintText: 'Search projects...',
-                prefixIcon: Icon(Icons.search, color: Colors.grey),
+                hintStyle: TextStyle(color: Colors.grey),
+                prefixIcon: Icon(Icons.search, color: Colors.grey.shade300),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8),
                   borderSide: BorderSide(color: Colors.grey.shade600),
