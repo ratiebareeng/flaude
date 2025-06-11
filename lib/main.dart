@@ -511,8 +511,14 @@ class MyApp extends StatelessWidget {
         theme: ThemeData.dark().copyWith(
           colorScheme: ColorScheme.fromSeed(
               seedColor: Color(0xffda7756), primary: Color(0xffbd5d3a)),
-          scaffoldBackgroundColor: Color(0xFF1a1a1a),
-          cardColor: Color(0xFF2d2d2d),
+          scaffoldBackgroundColor: Color(0xFF262624),
+          cardTheme: CardTheme(
+            color: Color(0xFF262624),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+              side: BorderSide(color: Colors.grey.shade800, width: 0.5),
+            ),
+          ),
           appBarTheme: AppBarTheme(
             backgroundColor: Color(0xFF1a1a1a),
             elevation: 0,
