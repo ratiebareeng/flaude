@@ -12,7 +12,6 @@ class ProjectsScreen extends StatelessWidget {
       appBar: AppBar(
         title: Text(
           'Projects',
-          style: TextStyle(fontSize: 24, fontWeight: FontWeight.w600),
         ),
         actions: [
           if (MediaQuery.of(context).size.width < 600)

@@ -511,7 +511,10 @@ class MyApp extends StatelessWidget {
         scaffoldMessengerKey: scaffoldMessengerKey,
         theme: ThemeData.dark().copyWith(
           colorScheme: ColorScheme.fromSeed(
-              seedColor: Color(0xffda7756), primary: Color(0xffbd5d3a)),
+              seedColor: Color(0xffda7756),
+              primary: Color(0xffbd5d3a),
+              surface: Color(0xFF262624),
+              onSurface: Colors.white),
           scaffoldBackgroundColor: Color(0xFF262624),
           cardTheme: CardTheme(
             color: Color(0xFF262624),
@@ -521,8 +524,14 @@ class MyApp extends StatelessWidget {
             ),
           ),
           appBarTheme: AppBarTheme(
-            backgroundColor: Color(0xFF1a1a1a),
+            centerTitle: false,
+            backgroundColor: Color(0xFF262624),
             elevation: 0,
+            titleTextStyle: GoogleFonts.gideonRoman(
+              color: Colors.grey.shade400,
+              fontSize: 24,
+              fontWeight: FontWeight.w600,
+            ),
           ),
           textTheme: GoogleFonts.latoTextTheme(
             Theme.of(context).textTheme.apply(
