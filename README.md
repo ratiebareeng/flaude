@@ -1,4 +1,6 @@
-# Flutter Claude Chat Clone
+# Flaude
+
+## Claude Chat Clone in Flutter
 
 A beautiful, responsive Flutter application that provides a chat interface for interacting with Anthropic's Claude AI assistant via the Claude API. Built with modern Flutter practices and a clean, intuitive user interface.
 
