@@ -13,7 +13,7 @@ class ProjectSummaryWidget extends StatelessWidget {
         onTap: () {
           // Navigate to project chats
         },
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(16),
         child: Padding(
           padding: EdgeInsets.all(16),
           child: Column(
@@ -21,10 +21,6 @@ class ProjectSummaryWidget extends StatelessWidget {
             children: [
               Text(
                 project.name,
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
-                ),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
@@ -34,7 +30,6 @@ class ProjectSummaryWidget extends StatelessWidget {
                   project.description,
                   style: TextStyle(
                     color: Colors.grey.shade400,
-                    fontSize: 14,
                   ),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
@@ -45,6 +40,7 @@ class ProjectSummaryWidget extends StatelessWidget {
                 'Updated ${StringHelper.instance.formatTimeAgo(project.updatedAt)}',
                 style: TextStyle(
                   color: Colors.grey.shade600,
+                  fontWeight: FontWeight.w500,
                   fontSize: 12,
                 ),
               ),

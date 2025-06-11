@@ -138,7 +138,7 @@ class ProjectsScreen extends StatelessWidget {
   }
 
   Widget _buildProjectsList(BuildContext context, List<Project> projects) {
-    final isTablet = MediaQuery.of(context).size.width >= 600;
+    final isTablet = MediaQuery.of(context).size.width >= 1000;
 
     if (isTablet) {
       return GridView.builder(
@@ -147,7 +147,7 @@ class ProjectsScreen extends StatelessWidget {
           crossAxisCount: 2,
           crossAxisSpacing: 16,
           mainAxisSpacing: 16,
-          childAspectRatio: 2.2,
+          childAspectRatio: isTablet ? 3 : 1.5,
         ),
         itemCount: projects.length,
         itemBuilder: (context, index) {
