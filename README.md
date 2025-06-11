@@ -139,4 +139,4 @@ If you have any questions or run into issues, please:
 
 ---
 
-**Made with ❤️ by [Your Name]**
+**Made with ❤️ by Ratie Bareeng**
