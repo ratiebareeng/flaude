@@ -1,8 +1,7 @@
 import 'package:claude_chat_clone/models/models.dart';
-import 'package:claude_chat_clone/viewmodel/app_state.dart';
+import 'package:claude_chat_clone/repositories/project_repository.dart';
 import 'package:claude_chat_clone/widgets/widgets.dart';
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 
 class ProjectsScreen extends StatelessWidget {
   const ProjectsScreen({super.key});
@@ -93,9 +92,22 @@ class ProjectsScreen extends StatelessWidget {
 
           // Projects grid/list
           Expanded(
-            child: Consumer<AppState>(
-              builder: (context, appState, child) {
-                if (appState.projects.isEmpty) {
+            child: StreamBuilder<(bool, List<Project>?)>(
+              stream: ProjectRepository.instance.listenToAllProjects(),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return Center(child: CircularProgressIndicator());
+                }
+                if (snapshot.hasError) {
+                  return Center(
+                    child: Text(
+                      'Error loading projects',
+                      style: TextStyle(color: Colors.red),
+                    ),
+                  );
+                }
+                final (success, projects) = snapshot.data ?? (false, null);
+                if (!success || projects == null || projects.isEmpty) {
                   return Center(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
@@ -116,7 +128,7 @@ class ProjectsScreen extends StatelessWidget {
                   );
                 }
 
-                return _buildProjectsList(context, appState.projects);
+                return _buildProjectsList(context, projects);
               },
             ),
           ),
