@@ -5,6 +5,7 @@ import 'package:claude_chat_clone/services/global_keys.dart';
 import 'package:claude_chat_clone/viewmodel/app_state.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 
 //? Primary color:
@@ -522,6 +523,12 @@ class MyApp extends StatelessWidget {
           appBarTheme: AppBarTheme(
             backgroundColor: Color(0xFF1a1a1a),
             elevation: 0,
+          ),
+          textTheme: GoogleFonts.latoTextTheme(
+            Theme.of(context).textTheme.apply(
+                  bodyColor: Colors.white,
+                  displayColor: Colors.white,
+                ),
           ),
         ),
         home: MainScreen(),
