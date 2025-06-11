@@ -539,6 +539,23 @@ class MyApp extends StatelessWidget {
                   displayColor: Colors.white,
                 ),
           ),
+          inputDecorationTheme: InputDecorationTheme(
+            hintStyle: TextStyle(color: Colors.grey),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: BorderSide(color: Colors.grey.shade600),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: BorderSide(color: Colors.grey.shade600),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: BorderSide(color: Colors.blue),
+            ),
+            filled: true,
+            fillColor: Color(0xFF262624),
+          ),
         ),
         home: MainScreen(),
         debugShowCheckedModeBanner: false,
