@@ -137,54 +137,6 @@ class ProjectsScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildProjectCard(BuildContext context, Project project) {
-    return Card(
-      child: InkWell(
-        onTap: () {
-          // Navigate to project chats
-        },
-        borderRadius: BorderRadius.circular(8),
-        child: Padding(
-          padding: EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                project.name,
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
-                ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-              if (project.description.isNotEmpty) ...[
-                SizedBox(height: 8),
-                Text(
-                  project.description,
-                  style: TextStyle(
-                    color: Colors.grey.shade400,
-                    fontSize: 14,
-                  ),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
-              Spacer(),
-              Text(
-                'Updated ${_formatTimeAgo(project.updatedAt)}',
-                style: TextStyle(
-                  color: Colors.grey.shade600,
-                  fontSize: 12,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
   Widget _buildProjectsList(BuildContext context, List<Project> projects) {
     final isTablet = MediaQuery.of(context).size.width >= 600;
 
@@ -199,7 +151,7 @@ class ProjectsScreen extends StatelessWidget {
         ),
         itemCount: projects.length,
         itemBuilder: (context, index) {
-          return _buildProjectCard(context, projects[index]);
+          return ProjectSummaryWidget(project: projects[index]);
         },
       );
     } else {
@@ -209,25 +161,10 @@ class ProjectsScreen extends StatelessWidget {
         itemBuilder: (context, index) {
           return Padding(
             padding: EdgeInsets.only(bottom: 12),
-            child: _buildProjectCard(context, projects[index]),
+            child: ProjectSummaryWidget(project: projects[index]),
           );
         },
       );
-    }
-  }
-
-  String _formatTimeAgo(DateTime dateTime) {
-    final now = DateTime.now();
-    final difference = now.difference(dateTime);
-
-    if (difference.inDays > 30) {
-      return '${(difference.inDays / 30).floor()} month${(difference.inDays / 30).floor() == 1 ? '' : 's'} ago';
-    } else if (difference.inDays > 0) {
-      return '${difference.inDays} day${difference.inDays == 1 ? '' : 's'} ago';
-    } else if (difference.inHours > 0) {
-      return '${difference.inHours} hour${difference.inHours == 1 ? '' : 's'} ago';
-    } else {
-      return 'Just now';
     }
   }
 
