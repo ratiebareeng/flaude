@@ -18,6 +18,12 @@ class ProjectsScreen extends StatelessWidget {
             IconButton(
               icon: Icon(Icons.add),
               onPressed: () => _showCreateProjectDialog(context),
+              style: IconButton.styleFrom(
+                shape: RoundedRectangleBorder(
+                  borderRadius:
+                      BorderRadius.circular(12), // Adjust radius as needed
+                ),
+              ),
             )
           else
             Padding(
@@ -25,10 +31,21 @@ class ProjectsScreen extends StatelessWidget {
               child: ElevatedButton.icon(
                 onPressed: () => _showCreateProjectDialog(context),
                 icon: Icon(Icons.add),
-                label: Text('New project'),
+                label: Text(
+                  'New project',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.white,
                   foregroundColor: Colors.black,
+                  padding: EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 16,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius:
+                        BorderRadius.circular(8), // Adjust radius as needed
+                  ),
                 ),
               ),
             ),
