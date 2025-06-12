@@ -1,5 +1,6 @@
 class Message {
   final String id;
+  final String chatId;
   final String content;
   final bool isUser;
   final DateTime timestamp;
@@ -7,6 +8,7 @@ class Message {
 
   Message({
     required this.id,
+    required this.chatId,
     required this.content,
     required this.isUser,
     required this.timestamp,
@@ -16,6 +18,7 @@ class Message {
   factory Message.fromJson(Map<String, dynamic> json) {
     return Message(
       id: json['id'],
+      chatId: json['chatId'],
       content: json['content'],
       isUser: json['isUser'],
       timestamp: DateTime.parse(json['timestamp']),
@@ -26,6 +29,7 @@ class Message {
   Map<String, dynamic> toJson() {
     return {
       'id': id,
+      'chatId': chatId,
       'content': content,
       'isUser': isUser,
       'timestamp': timestamp.toIso8601String(),
