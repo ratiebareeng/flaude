@@ -511,8 +511,9 @@ class MyApp extends StatelessWidget {
         scaffoldMessengerKey: scaffoldMessengerKey,
         theme: ThemeData.dark().copyWith(
           colorScheme: ColorScheme.fromSeed(
-              seedColor: Color(0xffda7756),
-              primary: Color(0xffbd5d3a),
+              seedColor:
+                  Color(0xFFCD7F32), //0xFFCD7F32 // 0xffda7756 // 0xffbd5d3a
+              primary: Color(0xFFCD7F32),
               surface: Color(0xFF262624),
               onSurface: Colors.white),
           scaffoldBackgroundColor: Color(0xFF262624),

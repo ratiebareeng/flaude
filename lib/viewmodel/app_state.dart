@@ -28,11 +28,13 @@ class AppState extends ChangeNotifier {
 
   String get selectedModel => _selectedModel;
 
-  void addMessage(String content, bool isUser, {List<String>? attachments}) {
+  void addMessage(String chatId, String content, bool isUser,
+      {List<String>? attachments}) {
     if (_currentChat == null) return;
 
     final message = Message(
       id: _uuid.v4(),
+      chatId: chatId,
       content: content,
       isUser: isUser,
       timestamp: DateTime.now(),
