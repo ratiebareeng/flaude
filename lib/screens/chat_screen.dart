@@ -1,25 +1,9 @@
 // screens/chat_screen.dart
+import 'package:claude_chat_clone/models/models.dart';
+import 'package:claude_chat_clone/repositories/chat_repository.dart';
+import 'package:claude_chat_clone/screens/services/chat_service.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-
-// Message model
-class ChatMessage {
-  final String id;
-  final String content;
-  final bool isUser;
-  final DateTime timestamp;
-  final bool hasArtifact;
-  final Map<String, dynamic>? artifact;
-
-  ChatMessage({
-    required this.id,
-    required this.content,
-    required this.isUser,
-    required this.timestamp,
-    this.hasArtifact = false,
-    this.artifact,
-  });
-}
 
 class ChatScreen extends StatefulWidget {
   final String? chatId;
@@ -39,96 +23,125 @@ class _ChatScreenState extends State<ChatScreen> {
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   final FocusNode _messageFocusNode = FocusNode();
+  late Chat chat;
 
-  List<ChatMessage> _messages = [];
   bool _isLoading = false;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      color: Color(0xFF1A1917), // Dark background like Claude
-      child: Column(
-        children: [
-          // Messages Area
-          Expanded(
-            child: _messages.isEmpty
-                ? _buildEmptyState()
-                : ListView.builder(
-                    controller: _scrollController,
-                    padding: EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-                    itemCount: _messages.length + (_isLoading ? 1 : 0),
-                    itemBuilder: (context, index) {
-                      if (index == _messages.length) {
-                        return _buildLoadingIndicator();
-                      }
-                      return _buildMessageBubble(_messages[index]);
-                    },
+    return _isLoading
+        ? CircularProgressIndicator()
+        : StreamBuilder<(bool, List<Message>?)>(
+            stream: ChatRepository.instance.listenToChatMessages(chat.id),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return Center(
+                  child: CircularProgressIndicator(
+                    valueColor:
+                        AlwaysStoppedAnimation<Color>(Color(0xFFCD7F32)),
                   ),
-          ),
-
-          if (_messages.isNotEmpty)
-            // Input Area
-            Container(
-              padding: EdgeInsets.all(24),
-              child: Column(
-                children: [
-                  // Input field
-                  Container(
-                    constraints: BoxConstraints(maxWidth: 800),
-                    child: inputRow(),
+                );
+              }
+              if (snapshot.hasError) {
+                return Center(
+                  child: Text(
+                    'Error loading messages',
+                    style: TextStyle(color: Colors.red),
                   ),
+                );
+              }
+              final List<Message> messages = snapshot.data?.$2 ?? [];
 
-                  // Model selector
-                  Container(
-                    constraints: BoxConstraints(maxWidth: 800),
-                    margin: EdgeInsets.only(top: 12),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Container(
-                          padding:
-                              EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                          decoration: BoxDecoration(
-                            color: Color(0xFF2F2F2F),
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: Colors.grey[700]!),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(
-                                'Claude Sonnet 4',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                              SizedBox(width: 4),
-                              Icon(
-                                Icons.keyboard_arrow_down,
-                                color: Colors.grey[400],
-                                size: 18,
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
+              if (messages.isEmpty) {
+                return _buildEmptyState();
+              }
+              return Container(
+                color: Color(0xFF1A1917), // Dark background like Claude
+                child: Column(
+                  children: [
+                    // Messages Area
+                    Expanded(
+                      child: messages.isEmpty
+                          ? _buildEmptyState()
+                          : ListView.builder(
+                              controller: _scrollController,
+                              padding: EdgeInsets.symmetric(
+                                  horizontal: 24, vertical: 16),
+                              itemCount: messages.length + (_isLoading ? 1 : 0),
+                              itemBuilder: (context, index) {
+                                if (index == messages.length) {
+                                  return _buildLoadingIndicator();
+                                }
+                                return _buildMessageBubble(messages[index]);
+                              },
+                            ),
                     ),
-                  ),
-                ],
-              ),
-            ),
-        ],
-      ),
-    );
+
+                    if (messages.isNotEmpty)
+                      // Input Area
+                      Container(
+                        padding: EdgeInsets.all(24),
+                        child: Column(
+                          children: [
+                            // Input field
+                            Container(
+                              constraints: BoxConstraints(maxWidth: 800),
+                              child: inputRow(),
+                            ),
+
+                            // Model selector
+                            Container(
+                              constraints: BoxConstraints(maxWidth: 800),
+                              margin: EdgeInsets.only(top: 12),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Container(
+                                    padding: EdgeInsets.symmetric(
+                                        horizontal: 12, vertical: 6),
+                                    decoration: BoxDecoration(
+                                      color: Color(0xFF2F2F2F),
+                                      borderRadius: BorderRadius.circular(12),
+                                      border:
+                                          Border.all(color: Colors.grey[700]!),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Text(
+                                          'Claude Sonnet 4',
+                                          style: TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
+                                        SizedBox(width: 4),
+                                        Icon(
+                                          Icons.keyboard_arrow_down,
+                                          color: Colors.grey[400],
+                                          size: 18,
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                  ],
+                ),
+              );
+            });
   }
 
   @override
   void didUpdateWidget(ChatScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.chatId != widget.chatId) {
-      _loadChatMessages();
+//!      _loadChatMessages();
     }
   }
 
@@ -143,7 +156,41 @@ class _ChatScreenState extends State<ChatScreen> {
   @override
   void initState() {
     super.initState();
-    _loadChatMessages();
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      setState(() {
+        _isLoading = true;
+      });
+      // 1. Load chat if widget.chatId is provided
+      if (widget.chatId != null) {
+        final mChat = await ChatService.instance.getChat(widget.chatId!);
+
+        if (mChat == null) {
+          return;
+        }
+
+        setState(() {
+          chat = mChat;
+          _isLoading = false;
+        });
+      }
+
+      // Create a new chat if widget.chatId is null
+      if (widget.chatId == null) {
+        // 1. create chat
+        final now = DateTime.now();
+        chat = Chat(
+          id: '',
+          title: 'Untitled',
+          messages: [],
+          createdAt: now,
+          updatedAt: now,
+        );
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    });
+    //_loadChatMessages();
     _messageController.addListener(() {
       setState(() {}); // Rebuild to update send button state
     });
@@ -555,7 +602,7 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
-  Widget _buildMessageBubble(ChatMessage message) {
+  Widget _buildMessageBubble(Message message) {
     return Container(
       constraints: BoxConstraints(maxWidth: 800),
       margin: EdgeInsets.symmetric(vertical: 8),
@@ -608,7 +655,7 @@ class _ChatScreenState extends State<ChatScreen> {
                           height: 1.5,
                         ),
                       ),
-                      if (message.hasArtifact && message.artifact != null)
+                      if (message.hasArtifact! && message.artifact != null)
                         _buildArtifactPreview(message.artifact!),
                     ],
                   ),
@@ -720,89 +767,6 @@ class _ChatScreenState extends State<ChatScreen> {
     }
   }
 
-  String _getChatTitle(String chatId) {
-    switch (chatId) {
-      case '1':
-        return 'Flutter Development Help';
-      case '2':
-        return 'Dart Programming Questions';
-      case '3':
-        return 'UI Design Discussion';
-      case '4':
-        return 'Important Code Review';
-      case '5':
-        return 'Architecture Planning';
-      default:
-        return 'Chat';
-    }
-  }
-
-  List<ChatMessage> _getSampleMessages(String chatId) {
-    switch (chatId) {
-      case '1':
-        return [
-          ChatMessage(
-            id: '1',
-            content:
-                'How do I create a responsive navigation drawer in Flutter?',
-            isUser: true,
-            timestamp: DateTime.now().subtract(Duration(minutes: 30)),
-          ),
-          ChatMessage(
-            id: '2',
-            content:
-                'I\'ll help you create a responsive navigation drawer in Flutter. Here\'s a complete implementation that adapts to different screen sizes:',
-            isUser: false,
-            timestamp: DateTime.now().subtract(Duration(minutes: 29)),
-            hasArtifact: true,
-            artifact: {
-              'id': 'responsive_nav_drawer',
-              'title': 'Responsive Navigation Drawer',
-              'type': 'code',
-              'language': 'dart',
-              'content': '''class ResponsiveDrawer extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        if (constraints.maxWidth >= 768) {
-          return Row(
-            children: [
-              Container(
-                width: 280,
-                child: NavigationDrawer(),
-              ),
-              Expanded(child: MainContent()),
-            ],
-          );
-        } else {
-          return Scaffold(
-            drawer: NavigationDrawer(),
-            body: MainContent(),
-          );
-        }
-      },
-    );
-  }
-}''',
-            },
-          ),
-        ];
-      default:
-        return [];
-    }
-  }
-
-  void _loadChatMessages() {
-    setState(() {
-      if (widget.chatId == null) {
-        _messages = [];
-      } else {
-        _messages = _getSampleMessages(widget.chatId!);
-      }
-    });
-  }
-
   void _scrollToBottom() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_scrollController.hasClients) {
@@ -815,10 +779,16 @@ class _ChatScreenState extends State<ChatScreen> {
     });
   }
 
-  void _sendMessage() {
+  void _sendMessage() async {
     if (_messageController.text.trim().isEmpty || _isLoading) return;
 
-    final userMessage = ChatMessage(
+    // Create chat if not already created
+    if (chat.id.isEmpty) {
+      await ChatService.instance.createChat(chat);
+    }
+
+    final userMessage = Message(
+      chatId: chat.id,
       id: DateTime.now().millisecondsSinceEpoch.toString(),
       content: _messageController.text.trim(),
       isUser: true,
@@ -826,98 +796,17 @@ class _ChatScreenState extends State<ChatScreen> {
     );
 
     setState(() {
-      _messages.add(userMessage);
+      //! _messages.add(userMessage);
       _isLoading = true;
     });
+
+    // add message to chat
+    //? await ChatService.instance.addMessageToChat(chat.id, userMessage);
 
     _messageController.clear();
     _scrollToBottom();
 
-    _simulateAIResponse(userMessage.content);
-  }
-
-  void _simulateAIResponse(String userMessage) {
-    Future.delayed(Duration(seconds: 2), () {
-      if (!mounted) return;
-
-      final aiMessage = ChatMessage(
-        id: DateTime.now().millisecondsSinceEpoch.toString(),
-        content: _generateAIResponse(userMessage),
-        isUser: false,
-        timestamp: DateTime.now(),
-        hasArtifact: userMessage.toLowerCase().contains('code') ||
-            userMessage.toLowerCase().contains('create') ||
-            userMessage.toLowerCase().contains('build') ||
-            userMessage.toLowerCase().contains('example'),
-        artifact: (userMessage.toLowerCase().contains('code') ||
-                userMessage.toLowerCase().contains('build'))
-            ? {
-                'id': 'sample_code_${DateTime.now().millisecondsSinceEpoch}',
-                'title': 'Code Example',
-                'type': 'code',
-                'language': 'dart',
-                'content': '''void main() {
-  runApp(MyApp());
-}
-
-class MyApp extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Flutter Demo',
-      theme: ThemeData(
-        primarySwatch: Colors.blue,
-      ),
-      home: MyHomePage(),
-    );
-  }
-}
-
-class MyHomePage extends StatefulWidget {
-  @override
-  _MyHomePageState createState() => _MyHomePageState();
-}
-
-class _MyHomePageState extends State<MyHomePage> {
-  int _counter = 0;
-
-  void _incrementCounter() {
-    setState(() {
-      _counter++;
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: Text('Flutter Demo')),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text('You have pushed the button this many times:'),
-            Text('\$_counter', style: Theme.of(context).textTheme.headline4),
-          ],
-        ),
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _incrementCounter,
-        tooltip: 'Increment',
-        child: Icon(Icons.add),
-      ),
-    );
-  }
-}''',
-              }
-            : null,
-      );
-
-      setState(() {
-        _messages.add(aiMessage);
-        _isLoading = false;
-      });
-      _scrollToBottom();
-    });
+    //_simulateAIResponse(userMessage.content);
   }
 
   void _viewArtifact(Map<String, dynamic> artifact) {
