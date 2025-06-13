@@ -55,4 +55,17 @@ class FirebaseRTDBService {
       throw Exception('Failed to write data: $e');
     }
   }
+
+  /// Write data generate id
+  Future<String> writeDataWithId(
+      String path, String refKey, Map<String, dynamic> data) async {
+    try {
+      final ref = _database.ref(path).push();
+      data[refKey] = ref.key; // Add the generated ID to the data
+      await ref.set(data);
+      return ref.key!;
+    } catch (e) {
+      throw Exception('Failed to write data with ID: $e');
+    }
+  }
 }
