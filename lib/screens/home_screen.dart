@@ -1,3 +1,5 @@
+import 'package:claude_chat_clone/models/models.dart';
+import 'package:claude_chat_clone/repositories/chat_repository.dart';
 import 'package:flutter/material.dart';
 
 import 'screens.dart';
@@ -15,8 +17,9 @@ class HomeScreenState extends State<HomeScreen> {
   String? _selectedChatId;
   bool _showArtifactDetail = false;
   Map<String, dynamic>? _currentArtifact;
+  final List<Chat> _recentChats = [];
 
-  final List<Map<String, String>> _starredChats = [
+  final List<Map<String, dynamic>> _starredChats = [
     {
       'id': '4',
       'title': 'Important Code Review',
@@ -30,6 +33,20 @@ class HomeScreenState extends State<HomeScreen> {
   ];
 
   bool get drawerIsOpen => drawerWidth == 300;
+
+  @override
+  void initState() {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      // Load recent chats from firebase
+      var result = await ChatRepository.instance.readRecentChats();
+      if (result.$2 != null) {
+        _recentChats.clear();
+        _recentChats.addAll(result.$2!);
+      }
+      setState(() {});
+    });
+    super.initState();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -176,16 +193,16 @@ class HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildChatItem({
-    required Map<String, String> chat,
+    required Chat chat,
     bool isStarred = false,
   }) {
-    final isSelected = _selectedChatId == chat['id'];
+    final isSelected = _selectedChatId == chat.id;
 
     return Container(
       margin: EdgeInsets.symmetric(horizontal: 8, vertical: 1),
       child: ListTile(
         title: Text(
-          chat['title'] ?? '',
+          chat.title,
           style: TextStyle(
             color: isSelected ? Colors.white : Colors.grey[300],
             fontSize: 14,
@@ -195,7 +212,7 @@ class HomeScreenState extends State<HomeScreen> {
           overflow: TextOverflow.ellipsis,
         ),
         subtitle: Text(
-          chat['preview'] ?? '',
+          chat.messages.first.content,
           style: TextStyle(
             color: Colors.grey[500],
             fontSize: 11,
@@ -208,7 +225,7 @@ class HomeScreenState extends State<HomeScreen> {
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(6),
         ),
-        onTap: () => _handleNavigation('chat', chatId: chat['id']),
+        onTap: () => _handleNavigation('chat', chatId: chat.id),
         dense: true,
         contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 2),
       ),
@@ -355,24 +372,26 @@ class HomeScreenState extends State<HomeScreen> {
                       ),
                     ),
                     ..._starredChats.map((chat) => _buildChatItem(
-                          chat: chat,
+                          chat: Chat.fromJson(chat),
                           isStarred: true,
                         )),
                   ],
 
                   // Recent Chats Section
-                  Padding(
-                    padding: EdgeInsets.fromLTRB(16, 8, 16, 8),
-                    child: Text(
-                      'Recent Chats',
-                      style: TextStyle(
-                        color: Colors.grey[400],
-                        fontSize: 12,
-                        fontWeight: FontWeight.w500,
+                  if (_recentChats.isNotEmpty) ...[
+                    Padding(
+                      padding: EdgeInsets.fromLTRB(16, 8, 16, 8),
+                      child: Text(
+                        'Recent Chats',
+                        style: TextStyle(
+                          color: Colors.grey[400],
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                        ),
                       ),
                     ),
-                  ),
-                  ..._recentChats.map((chat) => _buildChatItem(chat: chat)),
+                    ..._recentChats.map((chat) => _buildChatItem(chat: chat)),
+                  ],
                 ],
               ],
             ),

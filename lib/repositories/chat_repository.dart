@@ -278,6 +278,37 @@ class ChatRepository {
     }
   }
 
+  /// Read chats with a specific filter
+  Future<(bool, List<Chat>?)> readRecentChats(
+      {bool? desc = true, int? limit = 10}) async {
+    try {
+      final snapshot = await FirebaseRTDBService.instance.readPathWithFilter(
+        path: _chatsPath,
+        filterKey: 'updatedAt',
+      );
+      if (!snapshot.exists || snapshot.value == null) {
+        return (true, <Chat>[]);
+      }
+
+      final data = Map<String, dynamic>.from(
+          jsonDecode(jsonEncode(snapshot.value)) as Map);
+      final chats = data.entries
+          .map((entry) => Chat.fromJson(Map<String, dynamic>.from(entry.value)))
+          .toList();
+
+      // Sort chats by last activity (most recent first)
+      chats.sort((a, b) {
+        final aDate = a.updatedAt ?? DateTime.fromMillisecondsSinceEpoch(0);
+        final bDate = b.updatedAt ?? DateTime.fromMillisecondsSinceEpoch(0);
+        return bDate.compareTo(aDate);
+      });
+      return (true, chats);
+    } catch (e) {
+      log('Firebase error reading recent chats with filter: $e');
+      return (false, null);
+    }
+  }
+
   /// Read a single chat
   Future<(bool, Chat?)> readChat(String chatId) async {
     try {

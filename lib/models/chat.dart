@@ -22,11 +22,13 @@ class Chat {
   factory Chat.fromJson(Map<String, dynamic> json) {
     return Chat(
       id: json['id'],
-      userId: json['userId'],
-      title: json['title'],
-      messages: (json['messages'] as List)
-          .map((msg) => Message.fromJson(msg))
-          .toList(),
+      userId: json['userId'] as String?,
+      title: json['title'] != null ? json['title'] as String : 'Untitled',
+      messages: json['messages'] != null
+          ? (json['messages'] as List)
+              .map((msg) => Message.fromJson(msg))
+              .toList()
+          : [],
       createdAt: DateTime.parse(json['createdAt']),
       updatedAt: json.containsKey('updatedAt')
           ? DateTime.parse(json['updatedAt'])
