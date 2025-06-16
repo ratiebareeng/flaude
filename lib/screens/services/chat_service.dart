@@ -91,19 +91,42 @@ class ChatService {
     String? userId,
     String? projectId,
   }) async {
+    try {
+      final now = DateTime.now();
+
+      final chat = Chat(
+        id: '',
+        userId: userId,
+        title: title ?? 'New Chat',
+        messages: [],
+        createdAt: now,
+        updatedAt: now,
+        projectId: projectId,
+      );
+
+      return chat;
+    } on Exception catch (e) {
+      _showError('Failed to create chat: $e');
+      return null;
+    } catch (e) {
+      if (e is Error) {
+        _showError('An unexpected error occurred: $e');
+        return null;
+      } else {
+        _showError('Failed to create chat. Please try again.');
+        return null;
+      }
+    }
+  }
+
+  /// Create a new chat
+  Future<Chat?> saveChat(Chat chat) async {
     final now = DateTime.now();
 
-    final chat = Chat(
-      id: _uuid.v4(),
-      userId: userId,
-      title: title ?? 'New Chat',
-      messages: [],
-      createdAt: now,
+    final saveChat = chat.copyWith(
       updatedAt: now,
-      projectId: projectId,
     );
-
-    final success = await ChatRepository.instance.createChat(chat);
+    final success = await ChatRepository.instance.updateChat(saveChat);
 
     if (!success) {
       _showError('Failed to create chat. Please try again.');
