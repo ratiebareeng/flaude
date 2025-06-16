@@ -42,7 +42,7 @@ class ChatService {
   }
 
   /// Add a message to a chat
-  Future<bool> addMessage(String chatId, Message message) async {
+  Future<bool> saveMessageToFirebase(String chatId, Message message) async {
     final success = await ChatRepository.instance.addMessage(chatId, message);
 
     if (!success) {
@@ -126,14 +126,17 @@ class ChatService {
     final saveChat = chat.copyWith(
       updatedAt: now,
     );
-    final success = await ChatRepository.instance.updateChat(saveChat);
+    final savePath = await ChatRepository.instance.createChat(saveChat);
 
-    if (!success) {
+    if (savePath == null) {
       _showError('Failed to create chat. Please try again.');
       return null;
     }
 
-    return chat;
+    return chat.copyWith(
+      id: savePath,
+      updatedAt: now,
+    );
   }
 
   /// Delete a chat and all its messages
@@ -283,7 +286,7 @@ class ChatService {
       );
 
       // Add user message
-      final success = await addMessage(chatId, userMessage);
+      final success = await saveMessageToFirebase(chatId, userMessage);
       if (!success) return false;
 
       // TODO: Integrate with Claude API service for AI response
@@ -342,7 +345,7 @@ class ChatService {
         chatId: chat.id,
       );
 
-      final messageSuccess = await addMessage(chat.id, message);
+      final messageSuccess = await saveMessageToFirebase(chat.id, message);
       if (!messageSuccess) {
         // Clean up the chat if message fails
         await deleteChat(chat.id);

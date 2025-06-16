@@ -50,18 +50,18 @@ class ChatRepository {
   }
 
   /// Create a new chat
-  Future<bool> createChat(Chat chat) async {
+  Future<String?> createChat(Chat chat) async {
     try {
       final path = '$_chatsPath/${chat.id}';
-      await FirebaseRTDBService.instance
+      var chatId = await FirebaseRTDBService.instance
           .writeDataWithId(path, 'id', chat.toJson());
-      return true;
+      return chatId;
     } on FirebaseException catch (e) {
       log('Firebase error creating chat ${chat.id}: ${e.message}');
-      return false;
+      return null;
     } catch (e) {
       log('Unexpected error creating chat ${chat.id}: $e');
-      return false;
+      return null;
     }
   }
 

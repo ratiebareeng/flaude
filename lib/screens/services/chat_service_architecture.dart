@@ -91,7 +91,7 @@ class ChatService {
         );
 
         final created = await _chatRepository.createChat(chat);
-        if (!created) {
+        if (created == null) {
           return SendMessageResult.error('Failed to create chat');
         }
       }
@@ -197,7 +197,7 @@ class ChatService {
       );
 
       final success = await _chatRepository.createChat(chat);
-      return success ? chat : null;
+      return (success != null) ? chat : null;
     } catch (e) {
       log('Error creating chat: $e');
       return null;

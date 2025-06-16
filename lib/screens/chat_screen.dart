@@ -198,9 +198,9 @@ class _ChatScreenState extends State<ChatScreen> {
       //  }
     });
     //_loadChatMessages();
-    _messageController.addListener(() {
-      setState(() {}); // Rebuild to update send button state
-    });
+    // _messageController.addListener(() {
+    //   setState(() {}); // Rebuild to update send button state
+    // });
   }
 
   Widget inputRow() {
@@ -239,8 +239,14 @@ class _ChatScreenState extends State<ChatScreen> {
               minLines: 1,
               keyboardType: TextInputType.multiline,
               textInputAction: TextInputAction.newline,
-              onSubmitted: (value) {
-                if (!_isLoading) _sendMessage();
+              onSubmitted: (value) async {
+                if (_messageController.text.trim().isEmpty || _isLoading) {
+                  return;
+                }
+                await ChatService.instance.sendMessage(
+                  chatId: chat.id,
+                  content: _messageController.text.trim(),
+                );
               },
               style: TextStyle(
                 color: Colors.white,
@@ -267,7 +273,15 @@ class _ChatScreenState extends State<ChatScreen> {
         Container(
           margin: EdgeInsets.only(left: 8, bottom: 8),
           child: IconButton(
-            onPressed: _isLoading ? null : _sendMessage,
+            onPressed: () async {
+              if (_messageController.text.trim().isEmpty || _isLoading) {
+                return;
+              }
+              await ChatService.instance.sendMessage(
+                chatId: chat.id,
+                content: _messageController.text.trim(),
+              );
+            },
             icon: Icon(
               Icons.arrow_upward_rounded,
               color: _messageController.text.trim().isEmpty || _isLoading
@@ -310,8 +324,27 @@ class _ChatScreenState extends State<ChatScreen> {
             minLines: 2,
             keyboardType: TextInputType.multiline,
             textInputAction: TextInputAction.newline,
-            onSubmitted: (value) {
-              if (!_isLoading) _sendMessage();
+            onSubmitted: (value) async {
+              if (_messageController.text.trim().isEmpty || _isLoading) {
+                return;
+              }
+
+              // Create chat if it doesnt have an id
+              if (chat.id.isEmpty) {
+                final newChat = await ChatService.instance.saveChat(chat);
+
+                if (newChat == null || newChat.id.isEmpty) {
+                  return;
+                }
+
+                setState(() {
+                  chat = newChat;
+                });
+              }
+              await ChatService.instance.sendMessage(
+                chatId: chat.id,
+                content: _messageController.text.trim(),
+              );
             },
             style: TextStyle(
               color: Colors.white,
@@ -331,8 +364,6 @@ class _ChatScreenState extends State<ChatScreen> {
               enabledBorder: InputBorder.none,
               errorBorder: InputBorder.none,
               disabledBorder: InputBorder.none,
-              // contentPadding:
-              //     EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             ),
           ),
 
@@ -372,7 +403,24 @@ class _ChatScreenState extends State<ChatScreen> {
 
               // Send button
               IconButton(
-                onPressed: _isLoading ? null : _sendMessage,
+                onPressed: () async {
+                  // Create chat if it doesnt have an id
+                  if (chat.id.isEmpty) {
+                    final newChat = await ChatService.instance.saveChat(chat);
+
+                    if (newChat == null || newChat.id.isEmpty) {
+                      return;
+                    }
+
+                    setState(() {
+                      chat = newChat;
+                    });
+                  }
+                  await ChatService.instance.sendMessage(
+                    chatId: chat.id,
+                    content: _messageController.text.trim(),
+                  );
+                },
                 icon: Icon(
                   Icons.arrow_upward_rounded,
                   color: _messageController.text.trim().isEmpty || _isLoading
@@ -707,9 +755,15 @@ class _ChatScreenState extends State<ChatScreen> {
     IconData? icon,
   }) {
     return InkWell(
-      onTap: () {
+      onTap: () async {
         _messageController.text = subtitle;
-        _sendMessage();
+        if (_messageController.text.trim().isEmpty || _isLoading) {
+          return;
+        }
+        await ChatService.instance.sendMessage(
+          chatId: chat.id,
+          content: _messageController.text.trim(),
+        );
       },
       borderRadius: BorderRadius.circular(12),
       child: Container(
@@ -786,35 +840,35 @@ class _ChatScreenState extends State<ChatScreen> {
     });
   }
 
-  void _sendMessage() async {
-    if (_messageController.text.trim().isEmpty || _isLoading) return;
+  // void _sendMessage() async {
+  //   if (_messageController.text.trim().isEmpty || _isLoading) return;
 
-    // Create chat if not already created
-    if (chat.id.isEmpty) {
-      await ChatService.instance.createChat();
-    }
+  //   // Create chat if not already created
+  //   if (chat.id.isEmpty) {
+  //     await ChatService.instance.createChat();
+  //   }
 
-    final userMessage = Message(
-      chatId: chat.id,
-      id: DateTime.now().millisecondsSinceEpoch.toString(),
-      content: _messageController.text.trim(),
-      isUser: true,
-      timestamp: DateTime.now(),
-    );
+  //   final userMessage = Message(
+  //     chatId: chat.id,
+  //     id: DateTime.now().millisecondsSinceEpoch.toString(),
+  //     content: _messageController.text.trim(),
+  //     isUser: true,
+  //     timestamp: DateTime.now(),
+  //   );
 
-    setState(() {
-      //! _messages.add(userMessage);
-      _isLoading = true;
-    });
+  //   setState(() {
+  //     //! _messages.add(userMessage);
+  //     _isLoading = true;
+  //   });
 
-    // add message to chat
-    //? await ChatService.instance.addMessageToChat(chat.id, userMessage);
+  //   // add message to chat
+  //   //? await ChatService.instance.addMessageToChat(chat.id, userMessage);
 
-    _messageController.clear();
-    _scrollToBottom();
+  //   _messageController.clear();
+  //   _scrollToBottom();
 
-    //_simulateAIResponse(userMessage.content);
-  }
+  //   //_simulateAIResponse(userMessage.content);
+  // }
 
   void _viewArtifact(Map<String, dynamic> artifact) {
     if (widget.onArtifactView != null) {
