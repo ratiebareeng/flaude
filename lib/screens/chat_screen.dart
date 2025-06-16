@@ -24,13 +24,13 @@ class _ChatScreenState extends State<ChatScreen> {
   final ScrollController _scrollController = ScrollController();
   final FocusNode _messageFocusNode = FocusNode();
   late Chat chat;
-
+  bool _initDone = false;
   bool _isLoading = false;
 
   @override
   Widget build(BuildContext context) {
-    return _isLoading
-        ? CircularProgressIndicator()
+    return !_initDone
+        ? Center(child: CircularProgressIndicator())
         : StreamBuilder<(bool, List<Message>?)>(
             stream: ChatRepository.instance.listenToChatMessages(chat.id),
             builder: (context, snapshot) {
@@ -160,35 +160,42 @@ class _ChatScreenState extends State<ChatScreen> {
       setState(() {
         _isLoading = true;
       });
-      // 1. Load chat if widget.chatId is provided
-      if (widget.chatId != null) {
-        final mChat = await ChatService.instance.getChat(widget.chatId!);
 
-        if (mChat == null) {
-          return;
-        }
+      var result = await ChatService.instance.initialize(widget.chatId);
 
-        setState(() {
-          chat = mChat;
-          _isLoading = false;
-        });
+      if (result != null) {
+        chat = result;
       }
+      // 1. Load chat if widget.chatId is provided
+      // if (widget.chatId != null) {
+      //   final mChat = await ChatService.instance.getChat(widget.chatId!);
+
+      //   if (mChat == null) {
+      //     return;
+      //   }
+
+      //   setState(() {
+      //     chat = mChat;
+      //     _isLoading = false;
+      //   });
+      // }
 
       // Create a new chat if widget.chatId is null
-      if (widget.chatId == null) {
-        // 1. create chat
-        final now = DateTime.now();
-        chat = Chat(
-          id: '',
-          title: 'Untitled',
-          messages: [],
-          createdAt: now,
-          updatedAt: now,
-        );
-        setState(() {
-          _isLoading = false;
-        });
-      }
+      // if (widget.chatId == null) {
+      //   // 1. create chat
+      //   final now = DateTime.now();
+      //   chat = Chat(
+      //     id: '',
+      //     title: 'Untitled',
+      //     messages: [],
+      //     createdAt: now,
+      //     updatedAt: now,
+      //   );
+      setState(() {
+        _initDone = true;
+        _isLoading = false;
+      });
+      //  }
     });
     //_loadChatMessages();
     _messageController.addListener(() {
@@ -784,7 +791,7 @@ class _ChatScreenState extends State<ChatScreen> {
 
     // Create chat if not already created
     if (chat.id.isEmpty) {
-      await ChatService.instance.createChat(chat);
+      await ChatService.instance.createChat();
     }
 
     final userMessage = Message(

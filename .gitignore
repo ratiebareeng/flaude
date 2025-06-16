@@ -34,8 +34,8 @@ migrate_working_dir/
 /build/
 
 # Generated files
-linux/
-windows/
+linux/*
+windows/*
 
 
 # API keys (IMPORTANT - keep your API key secure!)

@@ -2,6 +2,7 @@ import 'package:claude_chat_clone/models/models.dart';
 import 'package:claude_chat_clone/repositories/repositories.dart';
 import 'package:claude_chat_clone/services/global_keys.dart';
 import 'package:flutter/material.dart';
+import 'package:uuid/uuid.dart';
 
 class ChatService {
   static final ChatService _instance = ChatService._internal();
@@ -11,6 +12,34 @@ class ChatService {
   factory ChatService() => _instance;
 
   ChatService._internal();
+
+  final Uuid _uuid = Uuid();
+
+  Future<Chat?> initialize(String? chatId) async {
+    try {
+      // Chat not found, create new one
+      if (chatId == null || chatId.isEmpty) {
+        final newChat = await ChatService.instance.createChat();
+
+        return newChat;
+      }
+
+      // Load existing chat
+      final existingChat = await ChatService.instance.getChat(chatId);
+
+      if (existingChat == null) {
+        _showError('Chat not found. Please start a new chat.');
+        return null;
+      }
+
+      return existingChat;
+    } catch (e) {
+      scaffoldMessengerKey.currentState?.showSnackBar(
+        SnackBar(content: Text('Failed to initialize chat: $e')),
+      );
+      return null;
+    }
+  }
 
   /// Add a message to a chat
   Future<bool> addMessage(String chatId, Message message) async {
@@ -57,15 +86,31 @@ class ChatService {
   }
 
   /// Create a new chat
-  Future<bool> createChat(Chat chat) async {
+  Future<Chat?> createChat({
+    String? title,
+    String? userId,
+    String? projectId,
+  }) async {
+    final now = DateTime.now();
+
+    final chat = Chat(
+      id: _uuid.v4(),
+      userId: userId,
+      title: title ?? 'New Chat',
+      messages: [],
+      createdAt: now,
+      updatedAt: now,
+      projectId: projectId,
+    );
+
     final success = await ChatRepository.instance.createChat(chat);
 
     if (!success) {
       _showError('Failed to create chat. Please try again.');
-      return false;
+      return null;
     }
 
-    return success;
+    return chat;
   }
 
   /// Delete a chat and all its messages
@@ -255,8 +300,15 @@ class ChatService {
       //     ? '${initialMessage.substring(0, 100)}...'
       //     : initialMessage,
 
-      final chatSuccess = await createChat(chat);
-      if (!chatSuccess) return null;
+      final createdChat = await createChat(
+        title: chat.title,
+        userId: chat.userId,
+        projectId: chat.projectId,
+      );
+
+      if (createdChat == null) {
+        return null;
+      }
 
       // Add the initial message
       final message = Message(
