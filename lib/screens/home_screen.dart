@@ -18,18 +18,19 @@ class HomeScreenState extends State<HomeScreen> {
   bool _showArtifactDetail = false;
   Map<String, dynamic>? _currentArtifact;
   final List<Chat> _recentChats = [];
+  bool _isInitDone = false;
 
   final List<Map<String, dynamic>> _starredChats = [
-    {
-      'id': '4',
-      'title': 'Important Code Review',
-      'preview': 'Critical bug fixes discussed...'
-    },
-    {
-      'id': '5',
-      'title': 'Architecture Planning',
-      'preview': 'App structure and patterns...'
-    },
+    // {
+    //   'id': '4',
+    //   'title': 'Important Code Review',
+    //   'preview': 'Critical bug fixes discussed...'
+    // },
+    // {
+    //   'id': '5',
+    //   'title': 'Architecture Planning',
+    //   'preview': 'App structure and patterns...'
+    // },
   ];
 
   bool get drawerIsOpen => drawerWidth == 300;
@@ -43,7 +44,9 @@ class HomeScreenState extends State<HomeScreen> {
         _recentChats.clear();
         _recentChats.addAll(result.$2!);
       }
-      setState(() {});
+      setState(() {
+        _isInitDone = true;
+      });
     });
     super.initState();
   }
@@ -51,20 +54,26 @@ class HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Row(
-        children: [
-          // Left Navigation Drawer
-          _buildNavigationDrawer(),
+      body: _isInitDone
+          ? Row(
+              children: [
+                // Left Navigation Drawer
+                _buildNavigationDrawer(),
 
-          // Main Content Area
-          Expanded(
-            child: _buildMainContent(),
-          ),
+                // Main Content Area
+                Expanded(
+                  child: _buildMainContent(),
+                ),
 
-          // Right Artifact Panel (conditional)
-          _buildArtifactPanel(),
-        ],
-      ),
+                // Right Artifact Panel (conditional)
+                _buildArtifactPanel(),
+              ],
+            )
+          : Center(
+              child: CircularProgressIndicator(
+                color: Theme.of(context).colorScheme.primary,
+              ),
+            ),
     );
   }
 
@@ -211,15 +220,17 @@ class HomeScreenState extends State<HomeScreen> {
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
         ),
-        subtitle: Text(
-          chat.messages.first.content,
-          style: TextStyle(
-            color: Colors.grey[500],
-            fontSize: 11,
-          ),
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-        ),
+        subtitle: chat.messages.isNotEmpty
+            ? Text(
+                chat.messages.first.content,
+                style: TextStyle(
+                  color: Colors.grey[500],
+                  fontSize: 11,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              )
+            : null,
         selected: isSelected,
         selectedTileColor: Color(0xFF2d2d2d),
         shape: RoundedRectangleBorder(
