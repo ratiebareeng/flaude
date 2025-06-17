@@ -25,12 +25,18 @@ class ChatService {
       }
 
       // Load existing chat
-      final existingChat = await ChatService.instance.getChat(chatId);
+      var existingChat = await ChatService.instance.getChat(chatId);
 
       if (existingChat == null) {
         _showError('Chat not found. Please start a new chat.');
         return null;
       }
+
+      // Load messages for the existing chat
+      final messages = await ChatService.instance.getChatMessages(chatId);
+      existingChat = existingChat.copyWith(
+        messages: messages,
+      );
 
       return existingChat;
     } catch (e) {
