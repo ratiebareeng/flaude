@@ -4,6 +4,7 @@ class Chat {
   final String id;
   final String? userId;
   final String title;
+  final String? description;
   final List<Message> messages;
   final DateTime createdAt;
   final DateTime? updatedAt;
@@ -13,6 +14,7 @@ class Chat {
     required this.id,
     this.userId,
     required this.title,
+    this.description,
     required this.messages,
     required this.createdAt,
     this.updatedAt,
@@ -22,18 +24,23 @@ class Chat {
   factory Chat.fromJson(Map<String, dynamic> json) {
     return Chat(
       id: json['id'],
-      userId: json['userId'] as String?,
-      title: json['title'] != null ? json['title'] as String : 'Untitled',
-      messages: json['messages'] != null
+      userId: json.containsKey('userId') ? json['userId'] as String? : null,
+      title: json.containsKey('title') ? json['title'] as String : 'Untitled',
+      description: json.containsKey('description')
+          ? json['description'] as String?
+          : null,
+      messages: json.containsKey('messages')
           ? (json['messages'] as List)
               .map((msg) => Message.fromJson(msg))
               .toList()
           : [],
-      createdAt: DateTime.parse(json['createdAt']),
+      createdAt: json.containsKey('createdAt')
+          ? DateTime.parse(json['createdAt'])
+          : DateTime.now(),
       updatedAt: json.containsKey('updatedAt')
           ? DateTime.parse(json['updatedAt'])
           : null,
-      projectId: json['projectId'],
+      projectId: json.containsKey('projectId') ? json['projectId'] : null,
     );
   }
 
@@ -64,6 +71,7 @@ class Chat {
     String? id,
     String? userId,
     String? title,
+    String? description,
     List<Message>? messages,
     DateTime? createdAt,
     DateTime? updatedAt,
@@ -73,6 +81,7 @@ class Chat {
       id: id ?? this.id,
       userId: userId ?? this.userId,
       title: title ?? this.title,
+      description: description ?? this.description,
       messages: messages ?? this.messages,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
@@ -86,6 +95,7 @@ class Chat {
         'id': id,
         'userId': userId,
         'title': title,
+        'description': description,
         'createdAt': createdAt.toIso8601String(),
         'projectId': projectId,
         'updatedAt': updatedAt?.toIso8601String(),
@@ -95,6 +105,7 @@ class Chat {
       'id': id,
       'userId': userId,
       'title': title,
+      'description': description,
       'messages': messages.map((msg) => msg.toJson()).toList(),
       'createdAt': createdAt.toIso8601String(),
       'updatedAt': updatedAt?.toIso8601String(),
