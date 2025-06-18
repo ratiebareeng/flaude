@@ -74,7 +74,8 @@ class _NavigationDrawerWidgetState extends State<NavigationDrawerWidget> {
             padding: EdgeInsets.symmetric(horizontal: 18, vertical: 8),
             child: drawerIsOpen
                 ? GestureDetector(
-                    onTap: () => widget.onMenuItemSelected?.call('new_chat'),
+                    onTap: () => widget.onMenuItemSelected
+                        ?.call('new_chat', chatId: null),
                     child: Row(
                       children: [
                         Icon(
@@ -102,8 +103,8 @@ class _NavigationDrawerWidgetState extends State<NavigationDrawerWidget> {
                     child: Material(
                       color: Colors.transparent,
                       child: InkWell(
-                        onTap: () =>
-                            widget.onMenuItemSelected?.call('new_chat'),
+                        onTap: () => widget.onMenuItemSelected
+                            ?.call('new_chat', chatId: null),
                         borderRadius: BorderRadius.circular(8),
                         child: Center(
                           child: Icon(
@@ -125,8 +126,8 @@ class _NavigationDrawerWidgetState extends State<NavigationDrawerWidget> {
                 _buildNavItem(
                   icon: Icons.chat_outlined,
                   title: 'Chats',
-                  isSelected: widget.currentView == 'chat',
-                  onTap: () => widget.onMenuItemSelected?.call('chat'),
+                  isSelected: widget.currentView == 'chats',
+                  onTap: () => widget.onMenuItemSelected?.call('chats'),
                 ),
                 _buildNavItem(
                   icon: Icons.folder_outlined,
