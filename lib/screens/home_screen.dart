@@ -57,6 +57,7 @@ class HomeScreenState extends State<HomeScreen> {
                       _currentView = view;
                       if (chatId != null) {
                         _selectedChatId = chatId;
+                        return;
                       }
                       if (view == 'new_chat') {
                         _selectedChatId = null;
@@ -215,13 +216,28 @@ class HomeScreenState extends State<HomeScreen> {
       case 'new_chat':
       case 'chat':
         return ChatScreen(
+          key: ValueKey(_selectedChatId ?? 'new_chat'),
           chatId: _selectedChatId,
           onArtifactView: _handleArtifactView,
         );
+      case 'chats':
+        return ChatsScreen(
+          onChatSelected: (chatId) {
+            setState(() {
+              _currentView = 'chat';
+              _selectedChatId = chatId;
+            });
+          },
+          onNewChatPressed: () {
+            setState(() {
+              _currentView = 'new_chat';
+              _selectedChatId = null;
+            });
+          },
+        );
       default:
-        return ChatScreen(
-          chatId: _selectedChatId,
-          onArtifactView: _handleArtifactView,
+        return Center(
+          child: Text('No implementation for view: $_currentView'),
         );
     }
   }
