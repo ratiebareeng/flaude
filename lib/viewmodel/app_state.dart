@@ -49,7 +49,7 @@ class AppState extends ChangeNotifier {
   void createChat({String? projectId, String? title}) {
     final chat = Chat(
       id: _uuid.v4(),
-      title: title ?? 'New Chat',
+      title: title ?? 'Untitled',
       messages: [],
       createdAt: DateTime.now(),
       projectId: projectId,

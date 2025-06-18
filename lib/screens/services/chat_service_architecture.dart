@@ -154,7 +154,7 @@ class ChatService {
         // 7. Update chat title if it's a new chat with generic title
         if (isNewChat ||
             chat.title == 'Untitled' ||
-            chat.title.startsWith('New Chat')) {
+            chat.title.startsWith('Untitled')) {
           final newTitle = _generateChatTitle(content);
           final updatedChat = chat.copyWith(title: newTitle);
           await _chatRepository.updateChat(updatedChat);
@@ -189,7 +189,7 @@ class ChatService {
       final chat = Chat(
         id: _uuid.v4(),
         userId: userId,
-        title: title ?? 'New Chat',
+        title: title ?? 'Untitled',
         messages: [],
         createdAt: now,
         updatedAt: now,

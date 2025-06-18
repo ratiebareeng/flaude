@@ -214,7 +214,7 @@ class ChatListPage extends StatelessWidget {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('New Chat'),
+        title: Text('Untitled'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -282,7 +282,7 @@ class ChatProvider with ChangeNotifier {
   Chat createNewChat(Project? project) {
     final chat = Chat(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
-      title: 'New Chat',
+      title: 'Untitled',
       projectId: project?.id,
       createdAt: DateTime.now(),
     );

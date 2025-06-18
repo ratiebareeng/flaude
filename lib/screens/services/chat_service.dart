@@ -103,7 +103,7 @@ class ChatService {
       final chat = Chat(
         id: '',
         userId: userId,
-        title: title ?? 'New Chat',
+        title: title ?? 'Untitled',
         messages: [],
         createdAt: now,
         updatedAt: now,
