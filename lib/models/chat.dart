@@ -80,13 +80,24 @@ class Chat {
     );
   }
 
-  Map<String, dynamic> toJson() {
+  Map<String, dynamic> toJson({bool? withMessages = false}) {
+    if (withMessages == false) {
+      return {
+        'id': id,
+        'userId': userId,
+        'title': title,
+        'createdAt': createdAt.toIso8601String(),
+        'projectId': projectId,
+        'updatedAt': updatedAt?.toIso8601String(),
+      };
+    }
     return {
       'id': id,
       'userId': userId,
       'title': title,
       'messages': messages.map((msg) => msg.toJson()).toList(),
       'createdAt': createdAt.toIso8601String(),
+      'updatedAt': updatedAt?.toIso8601String(),
       'projectId': projectId,
     };
   }
