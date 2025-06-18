@@ -24,11 +24,15 @@ class Message {
       id: json['id'],
       chatId: json['chatId'],
       content: json['content'],
-      isUser: json['isUser'],
+      isUser: json['isUser'] as bool? ?? false,
       timestamp: DateTime.parse(json['timestamp']),
-      attachments: json['attachments']?.cast<String>(),
-      hasArtifact: json['hasArtifact'] ?? false,
-      artifact: json['artifact'] != null
+      attachments: json.containsKey('attachments')
+          ? json['attachments']?.cast<String>()
+          : [],
+      hasArtifact: json.containsKey('hasArtifact')
+          ? (json['hasArtifact'] ?? false)
+          : false,
+      artifact: json.containsKey('artifact')
           ? Map<String, dynamic>.from(json['artifact'])
           : null,
     );
