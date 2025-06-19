@@ -284,7 +284,7 @@ class _ChatScreenState extends State<ChatScreen> {
       constraints: BoxConstraints(maxWidth: 800),
       padding: EdgeInsets.symmetric(horizontal: 4, vertical: 8),
       decoration: BoxDecoration(
-        color: Color(0xFF2F2F2F),
+        //  color: Color(0xFF2F2F2F),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: Colors.grey[700]!),
       ),
@@ -351,7 +351,7 @@ class _ChatScreenState extends State<ChatScreen> {
               Container(
                 padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 decoration: BoxDecoration(
-                  color: Color(0xFF2F2F2F),
+                  // color: Color(0xFF2F2F2F),
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(color: Colors.grey[700]!),
                 ),

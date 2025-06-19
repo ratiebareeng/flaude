@@ -106,7 +106,6 @@ class _ChatsScreenState extends State<ChatsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Color(0xFF1F1E1D),
       body: SafeArea(
         child: Column(
           children: [
@@ -123,7 +122,6 @@ class _ChatsScreenState extends State<ChatsScreen> {
                       Text(
                         'Your chat history',
                         style: TextStyle(
-                          color: Colors.white,
                           fontSize: 28,
                           fontWeight: FontWeight.w600,
                         ),
@@ -133,8 +131,8 @@ class _ChatsScreenState extends State<ChatsScreen> {
                         icon: Icon(Icons.add, size: 18),
                         label: Text('New chat'),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Color(0xFF3A3A3A),
-                          foregroundColor: Colors.white,
+                          // backgroundColor: Color(0xFF3A3A3A),
+                          // foregroundColor: Colors.white,
                           padding: EdgeInsets.symmetric(
                             horizontal: 16,
                             vertical: 8,
@@ -152,7 +150,6 @@ class _ChatsScreenState extends State<ChatsScreen> {
                   // Search Bar
                   Container(
                     decoration: BoxDecoration(
-                      color: Color(0xFF2A2A2A),
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(
                         color: _searchFocusNode.hasFocus
@@ -164,16 +161,14 @@ class _ChatsScreenState extends State<ChatsScreen> {
                     child: TextField(
                       controller: _searchController,
                       focusNode: _searchFocusNode,
-                      style: TextStyle(color: Colors.white, fontSize: 16),
+                      style: TextStyle(fontSize: 16),
                       decoration: InputDecoration(
                         hintText: 'Search your chats...',
                         hintStyle: TextStyle(
-                          color: Colors.grey[400],
                           fontSize: 16,
                         ),
                         prefixIcon: Icon(
                           Icons.search,
-                          color: Colors.grey[400],
                           size: 20,
                         ),
                         border: InputBorder.none,
@@ -200,7 +195,6 @@ class _ChatsScreenState extends State<ChatsScreen> {
                           TextSpan(
                             text: '${_allChats.length}',
                             style: TextStyle(
-                              color: Colors.white,
                               fontWeight: FontWeight.w500,
                             ),
                           ),
@@ -252,7 +246,6 @@ class _ChatsScreenState extends State<ChatsScreen> {
             Text(
               _error!,
               style: TextStyle(
-                color: Colors.grey[400],
                 fontSize: 16,
               ),
               textAlign: TextAlign.center,
@@ -287,7 +280,6 @@ class _ChatsScreenState extends State<ChatsScreen> {
                   ? 'No chats found matching "$_searchQuery"'
                   : 'No chats yet',
               style: TextStyle(
-                color: Colors.grey[400],
                 fontSize: 16,
               ),
             ),
@@ -321,7 +313,6 @@ class _ChatsScreenState extends State<ChatsScreen> {
     return Container(
       margin: EdgeInsets.only(bottom: 8),
       decoration: BoxDecoration(
-        color: Color(0xFF2A2A2A),
         borderRadius: BorderRadius.circular(12),
       ),
       child: InkWell(
@@ -336,7 +327,6 @@ class _ChatsScreenState extends State<ChatsScreen> {
                 width: 40,
                 height: 40,
                 decoration: BoxDecoration(
-                  color: Color(0xFF3A3A3A),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Icon(
@@ -357,7 +347,6 @@ class _ChatsScreenState extends State<ChatsScreen> {
                     Text(
                       chat.title,
                       style: TextStyle(
-                        color: Colors.white,
                         fontSize: 16,
                         fontWeight: FontWeight.w500,
                       ),
@@ -371,7 +360,6 @@ class _ChatsScreenState extends State<ChatsScreen> {
                     Text(
                       'Last message ${_formatLastMessageTime(chat.updatedAt)}',
                       style: TextStyle(
-                        color: Colors.grey[400],
                         fontSize: 14,
                       ),
                     ),
@@ -441,13 +429,12 @@ class _ChatsScreenState extends State<ChatsScreen> {
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: Color(0xFF2A2A2A),
-        title: Text('Rename Chat', style: TextStyle(color: Colors.white)),
+        title: Text('Rename Chat'),
         content: TextField(
           controller: controller,
-          style: TextStyle(color: Colors.white),
           decoration: InputDecoration(
             hintText: 'Enter new name',
-            hintStyle: TextStyle(color: Colors.grey[400]),
+            hintStyle: TextStyle(color: Colors.grey),
             border: OutlineInputBorder(
               borderSide: BorderSide(color: Colors.grey[400]!),
             ),
@@ -482,15 +469,14 @@ class _ChatsScreenState extends State<ChatsScreen> {
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: Color(0xFF2A2A2A),
-        title: Text('Delete Chat', style: TextStyle(color: Colors.white)),
+        title: Text('Delete Chat'),
         content: Text(
           'Are you sure you want to delete "${chat.title}"? This action cannot be undone.',
-          style: TextStyle(color: Colors.grey[300]),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text('Cancel', style: TextStyle(color: Colors.grey[400])),
+            child: Text('Cancel'),
           ),
           TextButton(
             onPressed: () async {
