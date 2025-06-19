@@ -87,11 +87,11 @@ class MyApp extends StatelessWidget {
               seedColor:
                   Color(0xFFCD7F32), //0xFFCD7F32 // 0xffda7756 // 0xffbd5d3a
               primary: Color(0xFFCD7F32),
-              surface: Color(0xFF262624),
-              onSurface: Color(0xFFFAF9F5)),
-          scaffoldBackgroundColor: Color(0xFF262624),
+              surface: Color(0xFFFAF9F5),
+              onSurface: Color(0xFF262624)),
+          scaffoldBackgroundColor: Color(0xFFFAF9F5),
           cardTheme: CardTheme(
-            color: Color(0xFF262624),
+            color: Color(0xFFFAF9F5),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12),
               side: BorderSide(color: Colors.grey.shade800, width: 0.5),
@@ -99,7 +99,7 @@ class MyApp extends StatelessWidget {
           ),
           appBarTheme: AppBarTheme(
             centerTitle: false,
-            backgroundColor: Color(0xFF262624),
+            backgroundColor: Color(0xFFFAF9F5),
             elevation: 0,
             titleTextStyle: GoogleFonts.gideonRoman(
               color: Colors.grey.shade400,
@@ -109,15 +109,15 @@ class MyApp extends StatelessWidget {
           ),
           textTheme: GoogleFonts.latoTextTheme(
             Theme.of(context).textTheme.apply(
-                  bodyColor: Colors.white,
-                  displayColor: Colors.white,
+                  bodyColor: Color(0xFF262624),
+                  displayColor: Color(0xFF262624),
                 ),
           ),
           inputDecorationTheme: InputDecorationTheme(
             hintStyle: TextStyle(color: Colors.grey),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8),
-              borderSide: BorderSide(color: Colors.grey.shade600),
+              borderSide: BorderSide(color: Colors.white),
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8),
@@ -130,7 +130,9 @@ class MyApp extends StatelessWidget {
             filled: true,
             fillColor: Color(0xFF262624),
           ),
-          iconTheme: IconThemeData(color: Colors.blue),
+          iconTheme: IconThemeData(
+            color: Color(0xFFCD7F32),
+          ),
         ),
         home: HomeScreen(),
         debugShowCheckedModeBanner: false,
