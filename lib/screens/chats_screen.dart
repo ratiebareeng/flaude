@@ -162,21 +162,21 @@ class _ChatsScreenState extends State<ChatsScreen> {
                       controller: _searchController,
                       focusNode: _searchFocusNode,
                       style: TextStyle(fontSize: 16),
-                      decoration: InputDecoration(
-                        hintText: 'Search your chats...',
-                        hintStyle: TextStyle(
-                          fontSize: 16,
-                        ),
-                        prefixIcon: Icon(
-                          Icons.search,
-                          size: 20,
-                        ),
-                        border: InputBorder.none,
-                        contentPadding: EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 12,
-                        ),
-                      ),
+                      // decoration: InputDecoration(
+                      //   hintText: 'Search your chats...',
+                      //   hintStyle: TextStyle(
+                      //     fontSize: 16,
+                      //   ),
+                      //   prefixIcon: Icon(
+                      //     Icons.search,
+                      //     size: 20,
+                      //   ),
+                      //   border: InputBorder.none,
+                      //   contentPadding: EdgeInsets.symmetric(
+                      //     horizontal: 16,
+                      //     vertical: 12,
+                      //   ),
+                      // ),
                     ),
                   ),
 

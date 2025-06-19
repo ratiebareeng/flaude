@@ -85,6 +85,7 @@ ThemeData get lightTheme {
         //     ),
         ),
     inputDecorationTheme: InputDecorationTheme(
+      focusColor: Color(0xFFCD7F32),
       hintStyle: TextStyle(color: Colors.grey),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(8),
