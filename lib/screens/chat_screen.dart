@@ -1,4 +1,5 @@
 // screens/chat_screen.dart
+import 'package:claude_chat_clone/models/ai_models_list.dart';
 import 'package:claude_chat_clone/models/models.dart';
 import 'package:claude_chat_clone/repositories/chat_repository.dart';
 import 'package:claude_chat_clone/screens/services/chat_service.dart';
@@ -88,46 +89,56 @@ class _ChatScreenState extends State<ChatScreen> {
                               constraints: BoxConstraints(maxWidth: 800),
                               child: inputRow(),
                             ),
+                            DropdownMenu<AIModel>(
+                              initialSelection: claudeModels.first,
+                              dropdownMenuEntries: claudeModels
+                                  .map((model) => DropdownMenuEntry<AIModel>(
+                                        value: model,
+                                        label: model.name,
+                                      ))
+                                  .toList(),
+                              onSelected: (model) {},
+                            ),
 
                             // Model selector
-                            Container(
-                              constraints: BoxConstraints(maxWidth: 800),
-                              margin: EdgeInsets.only(top: 12),
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Container(
-                                    padding: EdgeInsets.symmetric(
-                                        horizontal: 12, vertical: 6),
-                                    decoration: BoxDecoration(
-                                      color: Color(0xFF2F2F2F),
-                                      borderRadius: BorderRadius.circular(12),
-                                      border:
-                                          Border.all(color: Colors.grey[700]!),
-                                    ),
-                                    child: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Text(
-                                          'Claude Sonnet 4',
-                                          style: TextStyle(
-                                            color: Colors.white,
-                                            fontSize: 14,
-                                            fontWeight: FontWeight.w500,
-                                          ),
-                                        ),
-                                        SizedBox(width: 4),
-                                        Icon(
-                                          Icons.keyboard_arrow_down,
-                                          color: Colors.grey[400],
-                                          size: 18,
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
+                            // Container(
+                            //   constraints: BoxConstraints(maxWidth: 800),
+                            //   margin: EdgeInsets.only(top: 12),
+                            //   child: Row(
+                            //     mainAxisAlignment: MainAxisAlignment.center,
+                            //     children: [
+                            // Container(
+                            //   padding: EdgeInsets.symmetric(
+                            //       horizontal: 12, vertical: 6),
+                            //   decoration: BoxDecoration(
+                            //     color: Color(0xFF2F2F2F),
+                            //     borderRadius: BorderRadius.circular(12),
+                            //     // border:
+                            //     //     Border.all(color: Colors.grey[700]!),
+                            //   ),
+                            //   child: Row(
+                            //     mainAxisSize: MainAxisSize.min,
+                            //     children: [
+                            //       Text(
+                            //         'Claude Sonnet 4',
+                            //         style: TextStyle(
+                            //           color: Colors.white,
+                            //           fontSize: 14,
+                            //           fontWeight: FontWeight.w500,
+                            //         ),
+                            //       ),
+                            //       SizedBox(width: 4),
+                            //       Icon(
+                            //         Icons.keyboard_arrow_down,
+                            //         color: Colors.grey[400],
+                            //         size: 18,
+                            //       ),
+                            //     ],
+                            //   ),
+                            // ),
+                            //     ],
+                            //   ),
+                            // ),
                           ],
                         ),
                       ),
