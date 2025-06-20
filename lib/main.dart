@@ -32,6 +32,7 @@ class MyApp extends StatelessWidget {
       child: MaterialApp(
         title: 'Claude Clone',
         scaffoldMessengerKey: scaffoldMessengerKey,
+        themeMode: ThemeMode.dark,
         darkTheme: darkTheme,
         theme: lightTheme,
         home: HomeScreen(),
