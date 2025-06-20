@@ -1,21 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+const Color primaryColor =
+    Color(0xFFCD7F32); //0xFFCD7F32 // 0xffda7756 // 0xffbd5d3a
+const Color onDarkPrimaryColor = Color(0xFFFAF9F5);
+
 ThemeData get darkTheme {
   return ThemeData.dark().copyWith(
     colorScheme: ColorScheme.fromSeed(
-        seedColor: Color(0xFFCD7F32), //0xFFCD7F32 // 0xffda7756 // 0xffbd5d3a
-        primary: Color(0xFFCD7F32),
-        surface: Color(0xFF262624),
-        onSurface: Colors.white),
-    scaffoldBackgroundColor: Color(0xFF262624),
-    cardTheme: CardTheme(
-      color: Color(0xFF262624),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: BorderSide(color: Colors.grey.shade800, width: 0.5),
-      ),
+      seedColor: primaryColor,
+      primary: primaryColor,
+      surface: Color(0xFF262624),
+      onSurface: Colors.white,
+      primaryContainer: Color(0xFF262624),
+      onPrimaryContainer: onDarkPrimaryColor,
     ),
+    scaffoldBackgroundColor: Color(0xFF262624),
     appBarTheme: AppBarTheme(
       centerTitle: false,
       backgroundColor: Color(0xFF262624),
@@ -26,38 +26,58 @@ ThemeData get darkTheme {
         fontWeight: FontWeight.w600,
       ),
     ),
-    textTheme: GoogleFonts.latoTextTheme(
-        // Theme.of(context).textTheme.apply(
-        //       bodyColor: Colors.white,
-        //       displayColor: Colors.white,
-        //     ),
+    cardTheme: CardTheme(
+      color: Color(0xFF262624),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: Colors.grey.shade800, width: 0.5),
+      ),
+    ),
+    dropdownMenuTheme: DropdownMenuThemeData(
+      textStyle: TextStyle(color: onDarkPrimaryColor),
+      menuStyle: MenuStyle(
+        backgroundColor: WidgetStateProperty.all(Color(0xFF262624)),
+        shape: WidgetStateProperty.all(
+          RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8),
+          ),
         ),
+      ),
+      inputDecorationTheme: InputDecorationTheme(
+        border: InputBorder.none,
+        enabledBorder: InputBorder.none,
+        disabledBorder: InputBorder.none,
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: BorderSide(color: Colors.grey),
+        ),
+        filled: false,
+        fillColor: Colors.transparent,
+        labelStyle: TextStyle(color: onDarkPrimaryColor),
+      ),
+    ),
+    textTheme: GoogleFonts.latoTextTheme(),
     inputDecorationTheme: InputDecorationTheme(
       hintStyle: TextStyle(color: Colors.grey),
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(8),
-        borderSide: BorderSide(color: Colors.grey.shade600),
-      ),
-      enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(8),
-        borderSide: BorderSide(color: Colors.grey.shade600),
-      ),
+      border: InputBorder.none,
+      enabledBorder: InputBorder.none,
+      disabledBorder: InputBorder.none,
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(8),
-        borderSide: BorderSide(color: Colors.blue),
+        borderSide: BorderSide(color: Colors.grey),
       ),
       filled: true,
       fillColor: Color(0xFF262624),
     ),
-    iconTheme: IconThemeData(color: Colors.blue),
+    iconTheme: IconThemeData(color: primaryColor),
   );
 }
 
 ThemeData get lightTheme {
   return ThemeData.light().copyWith(
     colorScheme: ColorScheme.fromSeed(
-        seedColor: Color(0xFFCD7F32), //0xFFCD7F32 // 0xffda7756 // 0xffbd5d3a
-        primary: Color(0xFFCD7F32),
+        seedColor: primaryColor,
+        primary: primaryColor,
         surface: Color(0xFFFAF9F5),
         onSurface: Color(0xFF262624)),
     scaffoldBackgroundColor: Color(0xFFFAF9F5),
@@ -78,14 +98,9 @@ ThemeData get lightTheme {
         fontWeight: FontWeight.w600,
       ),
     ),
-    textTheme: GoogleFonts.latoTextTheme(
-        // Theme.of(context).textTheme.apply(
-        //       bodyColor: Color(0xFF262624),
-        //       displayColor: Color(0xFF262624),
-        //     ),
-        ),
+    textTheme: GoogleFonts.latoTextTheme(),
     inputDecorationTheme: InputDecorationTheme(
-      focusColor: Color(0xFFCD7F32),
+      focusColor: primaryColor,
       hintStyle: TextStyle(color: Colors.grey),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(8),
@@ -103,7 +118,7 @@ ThemeData get lightTheme {
       fillColor: Color(0xFF262624),
     ),
     iconTheme: IconThemeData(
-      color: Color(0xFFCD7F32),
+      color: primaryColor,
     ),
   );
 }
