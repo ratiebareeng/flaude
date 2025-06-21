@@ -26,7 +26,7 @@ ThemeData get darkTheme {
         fontWeight: FontWeight.w600,
       ),
     ),
-    cardTheme: CardTheme(
+    cardTheme: CardThemeData(
       color: Color(0xFF262624),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
@@ -81,7 +81,7 @@ ThemeData get lightTheme {
         surface: Color(0xFFFAF9F5),
         onSurface: Color(0xFF262624)),
     scaffoldBackgroundColor: Color(0xFFFAF9F5),
-    cardTheme: CardTheme(
+    cardTheme: CardThemeData(
       color: Color(0xFFFAF9F5),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
