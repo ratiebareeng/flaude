@@ -101,9 +101,21 @@ ThemeData get darkTheme {
       ),
       filled: true,
       fillColor: Color(0xFF262624),
-      labelStyle: GoogleFonts.gideonRoman(color: onDarkPrimaryColor),
+      labelStyle: GoogleFonts.lato(
+        color: onDarkPrimaryColor,
+      ),
     ),
     iconTheme: IconThemeData(color: primaryColor),
+    iconButtonTheme: IconButtonThemeData(
+      style: ButtonStyle(
+        backgroundColor: WidgetStateProperty.all(primaryColor),
+        shape: WidgetStateProperty.all(
+          RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8),
+          ),
+        ),
+      ),
+    ),
   );
 }
 

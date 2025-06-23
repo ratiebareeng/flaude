@@ -214,6 +214,11 @@ class HomeScreenState extends State<HomeScreen> {
       case 'projects':
         return ProjectsScreen();
       case 'new_chat':
+        return ChatScreen(
+          key: ValueKey('new_chat'),
+          chatId: null,
+          onArtifactView: _handleArtifactView,
+        );
       case 'chat':
         return ChatScreen(
           key: ValueKey(_selectedChatId ?? 'new_chat'),

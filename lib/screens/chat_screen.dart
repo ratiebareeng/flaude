@@ -356,20 +356,20 @@ class _ChatScreenState extends State<ChatScreen> {
                       ? Colors.grey[600]
                       : Colors.white,
                 ),
-                color: _messageController.text.trim().isEmpty || _isLoading
-                    ? Theme.of(context).primaryColor //.withValues(alpha: 0.5)
-                    : Theme.of(context).primaryColor,
-                style: IconButton.styleFrom(
-                  backgroundColor: _messageController.text.trim().isEmpty ||
-                          _isLoading
-                      ? Theme.of(context).primaryColor //.withValues(alpha: 0.5)
-                      : Theme.of(context)
-                          .primaryColor, //Color(0xFFCD7F32), // Claude orange
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  padding: EdgeInsets.all(8),
-                ),
+                // color: _messageController.text.trim().isEmpty || _isLoading
+                //     ? Theme.of(context).primaryColor //.withValues(alpha: 0.5)
+                //     : Theme.of(context).primaryColor,
+                // style: IconButton.styleFrom(
+                //   // backgroundColor: _messageController.text.trim().isEmpty ||
+                //   //         _isLoading
+                //   //     ? Theme.of(context).primaryColor //.withValues(alpha: 0.5)
+                //   //     : Theme.of(context)
+                //   //         .primaryColor, //Color(0xFFCD7F32), // Claude orange
+                //   shape: RoundedRectangleBorder(
+                //     borderRadius: BorderRadius.circular(8),
+                //   ),
+                //   padding: EdgeInsets.all(8),
+                // ),
               ),
             ],
           ),
