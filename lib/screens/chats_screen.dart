@@ -29,7 +29,9 @@ class _ChatsScreenState extends State<ChatsScreen> {
   @override
   void initState() {
     super.initState();
-    _loadChats();
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await _loadChats();
+    });
     _searchController.addListener(_onSearchChanged);
   }
 
@@ -41,7 +43,7 @@ class _ChatsScreenState extends State<ChatsScreen> {
     super.dispose();
   }
 
-  void _loadChats() async {
+  Future<void> _loadChats() async {
     setState(() {
       _isLoading = true;
       _error = null;
@@ -79,10 +81,6 @@ class _ChatsScreenState extends State<ChatsScreen> {
     });
   }
 
-  void _onChatTap(Chat chat) {
-    widget.onChatSelected?.call(chat.id);
-  }
-
   void _onNewChatTap() {
     widget.onNewChatPressed?.call();
   }
@@ -105,10 +103,9 @@ class _ChatsScreenState extends State<ChatsScreen> {
                     children: [
                       Text(
                         'Your chat history',
-                        style: TextStyle(
-                          fontSize: 28,
-                          fontWeight: FontWeight.w600,
-                        ),
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                              wordSpacing: 3,
+                            ),
                       ),
                       ElevatedButton.icon(
                         onPressed: _onNewChatTap,
