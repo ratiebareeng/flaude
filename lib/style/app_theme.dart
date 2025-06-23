@@ -11,7 +11,7 @@ ThemeData get darkTheme {
       seedColor: primaryColor,
       primary: primaryColor,
       surface: Color(0xFF262624),
-      onSurface: Colors.white,
+      onSurface: onDarkPrimaryColor,
       primaryContainer: Color(0xFF262624),
       onPrimaryContainer: onDarkPrimaryColor,
     ),
@@ -53,10 +53,43 @@ ThemeData get darkTheme {
         ),
         filled: false,
         fillColor: Colors.transparent,
-        labelStyle: TextStyle(color: onDarkPrimaryColor),
+        labelStyle: GoogleFonts.gideonRoman(color: onDarkPrimaryColor),
       ),
     ),
-    textTheme: GoogleFonts.latoTextTheme(),
+    textTheme: GoogleFonts.latoTextTheme()
+        .apply(
+          bodyColor: onDarkPrimaryColor,
+          displayColor: onDarkPrimaryColor,
+        )
+        .copyWith(
+          titleLarge: GoogleFonts.gideonRoman(
+            color: onDarkPrimaryColor,
+            fontSize: 24,
+            fontWeight: FontWeight.w600,
+          ),
+          labelLarge: GoogleFonts.gideonRoman(
+            color: onDarkPrimaryColor,
+            fontSize: 18,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+    primaryTextTheme: GoogleFonts.latoTextTheme()
+        .apply(
+          bodyColor: onDarkPrimaryColor,
+          displayColor: onDarkPrimaryColor,
+        )
+        .copyWith(
+          titleLarge: GoogleFonts.gideonRoman(
+            color: onDarkPrimaryColor,
+            fontSize: 24,
+            fontWeight: FontWeight.w600,
+          ),
+          labelLarge: GoogleFonts.gideonRoman(
+            color: onDarkPrimaryColor,
+            fontSize: 18,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
     inputDecorationTheme: InputDecorationTheme(
       hintStyle: TextStyle(color: Colors.grey),
       border: InputBorder.none,
@@ -68,6 +101,7 @@ ThemeData get darkTheme {
       ),
       filled: true,
       fillColor: Color(0xFF262624),
+      labelStyle: GoogleFonts.gideonRoman(color: onDarkPrimaryColor),
     ),
     iconTheme: IconThemeData(color: primaryColor),
   );
