@@ -1,7 +1,11 @@
 // screens/chat_screen.dart
+import 'dart:developer';
+
+import 'package:claude_chat_clone/models/ai_models_list.dart';
 import 'package:claude_chat_clone/models/models.dart';
 import 'package:claude_chat_clone/repositories/chat_repository.dart';
 import 'package:claude_chat_clone/screens/services/chat_service.dart';
+import 'package:claude_chat_clone/widgets/ai_model_dropdown_menu.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -24,13 +28,13 @@ class _ChatScreenState extends State<ChatScreen> {
   final ScrollController _scrollController = ScrollController();
   final FocusNode _messageFocusNode = FocusNode();
   late Chat chat;
-
+  bool _initDone = false;
   bool _isLoading = false;
 
   @override
   Widget build(BuildContext context) {
-    return _isLoading
-        ? CircularProgressIndicator()
+    return !_initDone
+        ? Center(child: CircularProgressIndicator())
         : StreamBuilder<(bool, List<Message>?)>(
             stream: ChatRepository.instance.listenToChatMessages(chat.id),
             builder: (context, snapshot) {
@@ -89,44 +93,13 @@ class _ChatScreenState extends State<ChatScreen> {
                               child: inputRow(),
                             ),
 
-                            // Model selector
-                            Container(
-                              constraints: BoxConstraints(maxWidth: 800),
-                              margin: EdgeInsets.only(top: 12),
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Container(
-                                    padding: EdgeInsets.symmetric(
-                                        horizontal: 12, vertical: 6),
-                                    decoration: BoxDecoration(
-                                      color: Color(0xFF2F2F2F),
-                                      borderRadius: BorderRadius.circular(12),
-                                      border:
-                                          Border.all(color: Colors.grey[700]!),
-                                    ),
-                                    child: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Text(
-                                          'Claude Sonnet 4',
-                                          style: TextStyle(
-                                            color: Colors.white,
-                                            fontSize: 14,
-                                            fontWeight: FontWeight.w500,
-                                          ),
-                                        ),
-                                        SizedBox(width: 4),
-                                        Icon(
-                                          Icons.keyboard_arrow_down,
-                                          color: Colors.grey[400],
-                                          size: 18,
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ],
-                              ),
+                            AIModelDropDownMenu(
+                              menuEntries: claudeModels,
+                              initialEntry: claudeModels.first,
+                              onSelected: (model) {
+                                // Handle model selection
+                                log('Selected model: ${model.name}');
+                              },
                             ),
                           ],
                         ),
@@ -160,40 +133,22 @@ class _ChatScreenState extends State<ChatScreen> {
       setState(() {
         _isLoading = true;
       });
-      // 1. Load chat if widget.chatId is provided
-      if (widget.chatId != null) {
-        final mChat = await ChatService.instance.getChat(widget.chatId!);
 
-        if (mChat == null) {
-          return;
-        }
+      var result = await ChatService.instance.initialize(widget.chatId);
 
-        setState(() {
-          chat = mChat;
-          _isLoading = false;
-        });
+      if (result != null) {
+        chat = result;
       }
 
-      // Create a new chat if widget.chatId is null
-      if (widget.chatId == null) {
-        // 1. create chat
-        final now = DateTime.now();
-        chat = Chat(
-          id: '',
-          title: 'Untitled',
-          messages: [],
-          createdAt: now,
-          updatedAt: now,
-        );
-        setState(() {
-          _isLoading = false;
-        });
-      }
+      setState(() {
+        _initDone = true;
+        _isLoading = false;
+      });
     });
     //_loadChatMessages();
-    _messageController.addListener(() {
-      setState(() {}); // Rebuild to update send button state
-    });
+    // _messageController.addListener(() {
+    //   setState(() {}); // Rebuild to update send button state
+    // });
   }
 
   Widget inputRow() {
@@ -232,8 +187,14 @@ class _ChatScreenState extends State<ChatScreen> {
               minLines: 1,
               keyboardType: TextInputType.multiline,
               textInputAction: TextInputAction.newline,
-              onSubmitted: (value) {
-                if (!_isLoading) _sendMessage();
+              onSubmitted: (value) async {
+                if (_messageController.text.trim().isEmpty || _isLoading) {
+                  return;
+                }
+                await ChatService.instance.sendMessage(
+                  chatId: chat.id,
+                  content: _messageController.text.trim(),
+                );
               },
               style: TextStyle(
                 color: Colors.white,
@@ -260,7 +221,15 @@ class _ChatScreenState extends State<ChatScreen> {
         Container(
           margin: EdgeInsets.only(left: 8, bottom: 8),
           child: IconButton(
-            onPressed: _isLoading ? null : _sendMessage,
+            onPressed: () async {
+              if (_messageController.text.trim().isEmpty || _isLoading) {
+                return;
+              }
+              await ChatService.instance.sendMessage(
+                chatId: chat.id,
+                content: _messageController.text.trim(),
+              );
+            },
             icon: Icon(
               Icons.arrow_upward_rounded,
               color: _messageController.text.trim().isEmpty || _isLoading
@@ -288,7 +257,7 @@ class _ChatScreenState extends State<ChatScreen> {
       constraints: BoxConstraints(maxWidth: 800),
       padding: EdgeInsets.symmetric(horizontal: 4, vertical: 8),
       decoration: BoxDecoration(
-        color: Color(0xFF2F2F2F),
+        //  color: Color(0xFF2F2F2F),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: Colors.grey[700]!),
       ),
@@ -303,8 +272,27 @@ class _ChatScreenState extends State<ChatScreen> {
             minLines: 2,
             keyboardType: TextInputType.multiline,
             textInputAction: TextInputAction.newline,
-            onSubmitted: (value) {
-              if (!_isLoading) _sendMessage();
+            onSubmitted: (value) async {
+              if (_messageController.text.trim().isEmpty || _isLoading) {
+                return;
+              }
+
+              // Create chat if it doesnt have an id
+              if (chat.id.isEmpty) {
+                final newChat = await ChatService.instance.saveChat(chat);
+
+                if (newChat == null || newChat.id.isEmpty) {
+                  return;
+                }
+
+                setState(() {
+                  chat = newChat;
+                });
+              }
+              await ChatService.instance.sendMessage(
+                chatId: chat.id,
+                content: _messageController.text.trim(),
+              );
             },
             style: TextStyle(
               color: Colors.white,
@@ -324,8 +312,6 @@ class _ChatScreenState extends State<ChatScreen> {
               enabledBorder: InputBorder.none,
               errorBorder: InputBorder.none,
               disabledBorder: InputBorder.none,
-              // contentPadding:
-              //     EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             ),
           ),
 
@@ -335,57 +321,55 @@ class _ChatScreenState extends State<ChatScreen> {
             mainAxisAlignment: MainAxisAlignment.end,
             children: [
               // Agent selector
-              Container(
-                padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(
-                  color: Color(0xFF2F2F2F),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.grey[700]!),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      'Claude Sonnet 4',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    SizedBox(width: 24),
-                    Icon(
-                      Icons.keyboard_arrow_down,
-                      color: Colors.grey[400],
-                      size: 18,
-                    ),
-                  ],
-                ),
+              AIModelDropDownMenu(
+                menuEntries: claudeModels,
+                initialEntry: claudeModels.first,
+                onSelected: (model) {
+                  // Handle model selection
+                  log('Selected model: ${model.name}');
+                },
               ),
 
               // Send button
               IconButton(
-                onPressed: _isLoading ? null : _sendMessage,
+                onPressed: () async {
+                  // Create chat if it doesnt have an id
+                  if (chat.id.isEmpty) {
+                    final newChat = await ChatService.instance.saveChat(chat);
+
+                    if (newChat == null || newChat.id.isEmpty) {
+                      return;
+                    }
+
+                    setState(() {
+                      chat = newChat;
+                    });
+                  }
+                  await ChatService.instance.sendMessage(
+                    chatId: chat.id,
+                    content: _messageController.text.trim(),
+                  );
+                },
                 icon: Icon(
                   Icons.arrow_upward_rounded,
                   color: _messageController.text.trim().isEmpty || _isLoading
                       ? Colors.grey[600]
                       : Colors.white,
                 ),
-                color: _messageController.text.trim().isEmpty || _isLoading
-                    ? Theme.of(context).primaryColor //.withValues(alpha: 0.5)
-                    : Theme.of(context).primaryColor,
-                style: IconButton.styleFrom(
-                  backgroundColor: _messageController.text.trim().isEmpty ||
-                          _isLoading
-                      ? Theme.of(context).primaryColor //.withValues(alpha: 0.5)
-                      : Theme.of(context)
-                          .primaryColor, //Color(0xFFCD7F32), // Claude orange
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  padding: EdgeInsets.all(8),
-                ),
+                // color: _messageController.text.trim().isEmpty || _isLoading
+                //     ? Theme.of(context).primaryColor //.withValues(alpha: 0.5)
+                //     : Theme.of(context).primaryColor,
+                // style: IconButton.styleFrom(
+                //   // backgroundColor: _messageController.text.trim().isEmpty ||
+                //   //         _isLoading
+                //   //     ? Theme.of(context).primaryColor //.withValues(alpha: 0.5)
+                //   //     : Theme.of(context)
+                //   //         .primaryColor, //Color(0xFFCD7F32), // Claude orange
+                //   shape: RoundedRectangleBorder(
+                //     borderRadius: BorderRadius.circular(8),
+                //   ),
+                //   padding: EdgeInsets.all(8),
+                // ),
               ),
             ],
           ),
@@ -700,9 +684,15 @@ class _ChatScreenState extends State<ChatScreen> {
     IconData? icon,
   }) {
     return InkWell(
-      onTap: () {
+      onTap: () async {
         _messageController.text = subtitle;
-        _sendMessage();
+        if (_messageController.text.trim().isEmpty || _isLoading) {
+          return;
+        }
+        await ChatService.instance.sendMessage(
+          chatId: chat.id,
+          content: _messageController.text.trim(),
+        );
       },
       borderRadius: BorderRadius.circular(12),
       child: Container(
@@ -779,35 +769,35 @@ class _ChatScreenState extends State<ChatScreen> {
     });
   }
 
-  void _sendMessage() async {
-    if (_messageController.text.trim().isEmpty || _isLoading) return;
+  // void _sendMessage() async {
+  //   if (_messageController.text.trim().isEmpty || _isLoading) return;
 
-    // Create chat if not already created
-    if (chat.id.isEmpty) {
-      await ChatService.instance.createChat(chat);
-    }
+  //   // Create chat if not already created
+  //   if (chat.id.isEmpty) {
+  //     await ChatService.instance.createChat();
+  //   }
 
-    final userMessage = Message(
-      chatId: chat.id,
-      id: DateTime.now().millisecondsSinceEpoch.toString(),
-      content: _messageController.text.trim(),
-      isUser: true,
-      timestamp: DateTime.now(),
-    );
+  //   final userMessage = Message(
+  //     chatId: chat.id,
+  //     id: DateTime.now().millisecondsSinceEpoch.toString(),
+  //     content: _messageController.text.trim(),
+  //     isUser: true,
+  //     timestamp: DateTime.now(),
+  //   );
 
-    setState(() {
-      //! _messages.add(userMessage);
-      _isLoading = true;
-    });
+  //   setState(() {
+  //     //! _messages.add(userMessage);
+  //     _isLoading = true;
+  //   });
 
-    // add message to chat
-    //? await ChatService.instance.addMessageToChat(chat.id, userMessage);
+  //   // add message to chat
+  //   //? await ChatService.instance.addMessageToChat(chat.id, userMessage);
 
-    _messageController.clear();
-    _scrollToBottom();
+  //   _messageController.clear();
+  //   _scrollToBottom();
 
-    //_simulateAIResponse(userMessage.content);
-  }
+  //   //_simulateAIResponse(userMessage.content);
+  // }
 
   void _viewArtifact(Map<String, dynamic> artifact) {
     if (widget.onArtifactView != null) {

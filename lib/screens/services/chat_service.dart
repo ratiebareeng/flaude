@@ -2,6 +2,7 @@ import 'package:claude_chat_clone/models/models.dart';
 import 'package:claude_chat_clone/repositories/repositories.dart';
 import 'package:claude_chat_clone/services/global_keys.dart';
 import 'package:flutter/material.dart';
+import 'package:uuid/uuid.dart';
 
 class ChatService {
   static final ChatService _instance = ChatService._internal();
@@ -12,8 +13,42 @@ class ChatService {
 
   ChatService._internal();
 
+  final Uuid _uuid = Uuid();
+
+  Future<Chat?> initialize(String? chatId) async {
+    try {
+      // Chat not found, create new one
+      if (chatId == null || chatId.isEmpty) {
+        final newChat = await ChatService.instance.createChat();
+
+        return newChat;
+      }
+
+      // Load existing chat
+      var existingChat = await ChatService.instance.getChat(chatId);
+
+      if (existingChat == null) {
+        _showError('Chat not found. Please start a new chat.');
+        return null;
+      }
+
+      // Load messages for the existing chat
+      final messages = await ChatService.instance.getChatMessages(chatId);
+      existingChat = existingChat.copyWith(
+        messages: messages,
+      );
+
+      return existingChat;
+    } catch (e) {
+      scaffoldMessengerKey.currentState?.showSnackBar(
+        SnackBar(content: Text('Failed to initialize chat: $e')),
+      );
+      return null;
+    }
+  }
+
   /// Add a message to a chat
-  Future<bool> addMessage(String chatId, Message message) async {
+  Future<bool> saveMessageToFirebase(String chatId, Message message) async {
     final success = await ChatRepository.instance.addMessage(chatId, message);
 
     if (!success) {
@@ -57,15 +92,57 @@ class ChatService {
   }
 
   /// Create a new chat
-  Future<bool> createChat(Chat chat) async {
-    final success = await ChatRepository.instance.createChat(chat);
+  Future<Chat?> createChat({
+    String? title,
+    String? userId,
+    String? projectId,
+  }) async {
+    try {
+      final now = DateTime.now();
 
-    if (!success) {
+      final chat = Chat(
+        id: '',
+        userId: userId,
+        title: title ?? 'Untitled',
+        messages: [],
+        createdAt: now,
+        updatedAt: now,
+        projectId: projectId,
+      );
+
+      return chat;
+    } on Exception catch (e) {
+      _showError('Failed to create chat: $e');
+      return null;
+    } catch (e) {
+      if (e is Error) {
+        _showError('An unexpected error occurred: $e');
+        return null;
+      } else {
+        _showError('Failed to create chat. Please try again.');
+        return null;
+      }
+    }
+  }
+
+  /// Create a new chat
+  Future<Chat?> saveChat(Chat chat) async {
+    final now = DateTime.now();
+
+    final saveChat = chat.copyWith(
+      updatedAt: now,
+    );
+    final savePath = await ChatRepository.instance.createChat(saveChat);
+
+    if (savePath == null) {
       _showError('Failed to create chat. Please try again.');
-      return false;
+      return null;
     }
 
-    return success;
+    return chat.copyWith(
+      id: savePath,
+      updatedAt: now,
+    );
   }
 
   /// Delete a chat and all its messages
@@ -215,7 +292,7 @@ class ChatService {
       );
 
       // Add user message
-      final success = await addMessage(chatId, userMessage);
+      final success = await saveMessageToFirebase(chatId, userMessage);
       if (!success) return false;
 
       // TODO: Integrate with Claude API service for AI response
@@ -255,8 +332,15 @@ class ChatService {
       //     ? '${initialMessage.substring(0, 100)}...'
       //     : initialMessage,
 
-      final chatSuccess = await createChat(chat);
-      if (!chatSuccess) return null;
+      final createdChat = await createChat(
+        title: chat.title,
+        userId: chat.userId,
+        projectId: chat.projectId,
+      );
+
+      if (createdChat == null) {
+        return null;
+      }
 
       // Add the initial message
       final message = Message(
@@ -267,7 +351,7 @@ class ChatService {
         chatId: chat.id,
       );
 
-      final messageSuccess = await addMessage(chat.id, message);
+      final messageSuccess = await saveMessageToFirebase(chat.id, message);
       if (!messageSuccess) {
         // Clean up the chat if message fails
         await deleteChat(chat.id);

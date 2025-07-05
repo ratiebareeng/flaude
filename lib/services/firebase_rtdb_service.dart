@@ -38,6 +38,27 @@ class FirebaseRTDBService {
     }
   }
 
+  /// Read data from a specific path with filtering (returns a future)
+  Future<DataSnapshot> readPathWithFilter(
+      {required String path,
+      required String filterKey,
+      bool? desc = true,
+      int? limit = 10}) async {
+    try {
+      late Query query;
+      query = _database.ref(path).orderByChild(filterKey);
+
+      if (desc == true) {
+        query = query.limitToLast(limit ?? 10);
+      } else {
+        query = query.limitToFirst(limit ?? 10);
+      }
+      return await query.get();
+    } catch (e) {
+      throw Exception('Failed to read data with filter: $e');
+    }
+  }
+
   /// Update data at a specific path
   Future<void> updateData(String path, Map<String, dynamic> updates) async {
     try {

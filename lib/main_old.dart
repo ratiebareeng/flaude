@@ -214,7 +214,7 @@ class ChatListPage extends StatelessWidget {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('New Chat'),
+        title: Text('Untitled'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -282,7 +282,7 @@ class ChatProvider with ChangeNotifier {
   Chat createNewChat(Project? project) {
     final chat = Chat(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
-      title: 'New Chat',
+      title: 'Untitled',
       projectId: project?.id,
       createdAt: DateTime.now(),
     );
@@ -537,7 +537,7 @@ class MyApp extends StatelessWidget {
             elevation: 0,
             surfaceTintColor: Colors.transparent,
           ),
-          cardTheme: CardTheme(
+          cardTheme: CardThemeData(
             color: const Color(0xFF2C2C2E),
             elevation: 0,
             shape:

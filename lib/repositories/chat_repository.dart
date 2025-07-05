@@ -50,18 +50,18 @@ class ChatRepository {
   }
 
   /// Create a new chat
-  Future<bool> createChat(Chat chat) async {
+  Future<String?> createChat(Chat chat) async {
     try {
       final path = '$_chatsPath/${chat.id}';
-      await FirebaseRTDBService.instance
+      var chatId = await FirebaseRTDBService.instance
           .writeDataWithId(path, 'id', chat.toJson());
-      return true;
+      return chatId;
     } on FirebaseException catch (e) {
       log('Firebase error creating chat ${chat.id}: ${e.message}');
-      return false;
+      return null;
     } catch (e) {
       log('Unexpected error creating chat ${chat.id}: $e');
-      return false;
+      return null;
     }
   }
 
@@ -274,6 +274,37 @@ class ChatRepository {
       return (false, null);
     } catch (e) {
       log('Unexpected error reading all chats: $e');
+      return (false, null);
+    }
+  }
+
+  /// Read chats with a specific filter
+  Future<(bool, List<Chat>?)> readRecentChats(
+      {bool? desc = true, int? limit = 10}) async {
+    try {
+      final snapshot = await FirebaseRTDBService.instance.readPathWithFilter(
+        path: _chatsPath,
+        filterKey: 'updatedAt',
+      );
+      if (!snapshot.exists || snapshot.value == null) {
+        return (true, <Chat>[]);
+      }
+
+      final data = Map<String, dynamic>.from(
+          jsonDecode(jsonEncode(snapshot.value)) as Map);
+      final chats = data.entries
+          .map((entry) => Chat.fromJson(Map<String, dynamic>.from(entry.value)))
+          .toList();
+
+      // Sort chats by last activity (most recent first)
+      chats.sort((a, b) {
+        final aDate = a.updatedAt ?? DateTime.fromMillisecondsSinceEpoch(0);
+        final bDate = b.updatedAt ?? DateTime.fromMillisecondsSinceEpoch(0);
+        return bDate.compareTo(aDate);
+      });
+      return (true, chats);
+    } catch (e) {
+      log('Firebase error reading recent chats with filter: $e');
       return (false, null);
     }
   }
