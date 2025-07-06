@@ -13,9 +13,21 @@ class ChatRepository {
   final String _chatsPath = 'chats';
   final String _messagesPath = 'messages';
 
+  final List<Chat> _allChats = [];
+  final List<Chat> _recentChats = [];
+
   factory ChatRepository() => _instance;
 
   ChatRepository._internal();
+
+  void addChats(List<Chat> chats) {
+    // Clear existing chats before adding new ones
+    _allChats.clear();
+    _recentChats.clear();
+    // Add new chats to the lists
+    _allChats.addAll(chats);
+    _recentChats.addAll(chats);
+  }
 
   /// Add a message to a chat
   Future<bool> addMessage(String chatId, Message message) async {
@@ -45,6 +57,21 @@ class ChatRepository {
       return false;
     } catch (e) {
       log('Unexpected error adding message to chat $chatId: $e');
+      return false;
+    }
+  }
+
+  // Check if a chat exists
+  Future<bool> chatExists(String chatId) async {
+    try {
+      final path = '$_chatsPath/$chatId';
+      final snapshot = await FirebaseRTDBService.instance.readPath(path);
+      return snapshot.exists && snapshot.value != null;
+    } on FirebaseException catch (e) {
+      log('Firebase error checking if chat $chatId exists: ${e.message}');
+      return false;
+    } catch (e) {
+      log('Unexpected error checking if chat $chatId exists: $e');
       return false;
     }
   }
@@ -278,37 +305,6 @@ class ChatRepository {
     }
   }
 
-  /// Read chats with a specific filter
-  Future<(bool, List<Chat>?)> readRecentChats(
-      {bool? desc = true, int? limit = 10}) async {
-    try {
-      final snapshot = await FirebaseRTDBService.instance.readPathWithFilter(
-        path: _chatsPath,
-        filterKey: 'updatedAt',
-      );
-      if (!snapshot.exists || snapshot.value == null) {
-        return (true, <Chat>[]);
-      }
-
-      final data = Map<String, dynamic>.from(
-          jsonDecode(jsonEncode(snapshot.value)) as Map);
-      final chats = data.entries
-          .map((entry) => Chat.fromJson(Map<String, dynamic>.from(entry.value)))
-          .toList();
-
-      // Sort chats by last activity (most recent first)
-      chats.sort((a, b) {
-        final aDate = a.updatedAt ?? DateTime.fromMillisecondsSinceEpoch(0);
-        final bDate = b.updatedAt ?? DateTime.fromMillisecondsSinceEpoch(0);
-        return bDate.compareTo(aDate);
-      });
-      return (true, chats);
-    } catch (e) {
-      log('Firebase error reading recent chats with filter: $e');
-      return (false, null);
-    }
-  }
-
   /// Read a single chat
   Future<(bool, Chat?)> readChat(String chatId) async {
     try {
@@ -355,6 +351,37 @@ class ChatRepository {
       return (false, null);
     } catch (e) {
       log('Unexpected error reading messages for chat $chatId: $e');
+      return (false, null);
+    }
+  }
+
+  /// Read chats with a specific filter
+  Future<(bool, List<Chat>?)> readRecentChats(
+      {bool? desc = true, int? limit = 10}) async {
+    try {
+      final snapshot = await FirebaseRTDBService.instance.readPathWithFilter(
+        path: _chatsPath,
+        filterKey: 'updatedAt',
+      );
+      if (!snapshot.exists || snapshot.value == null) {
+        return (true, <Chat>[]);
+      }
+
+      final data = Map<String, dynamic>.from(
+          jsonDecode(jsonEncode(snapshot.value)) as Map);
+      final chats = data.entries
+          .map((entry) => Chat.fromJson(Map<String, dynamic>.from(entry.value)))
+          .toList();
+
+      // Sort chats by last activity (most recent first)
+      chats.sort((a, b) {
+        final aDate = a.updatedAt ?? DateTime.fromMillisecondsSinceEpoch(0);
+        final bDate = b.updatedAt ?? DateTime.fromMillisecondsSinceEpoch(0);
+        return bDate.compareTo(aDate);
+      });
+      return (true, chats);
+    } catch (e) {
+      log('Firebase error reading recent chats with filter: $e');
       return (false, null);
     }
   }
