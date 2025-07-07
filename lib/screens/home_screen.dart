@@ -1,3 +1,4 @@
+import 'package:claude_chat_clone/plugins/error_manager/error_manager.dart';
 import 'package:claude_chat_clone/viewmodels/home_viewmodel.dart';
 import 'package:claude_chat_clone/widgets/widgets.dart';
 import 'package:flutter/material.dart';
@@ -35,22 +36,9 @@ class _HomeScreenContent extends StatelessWidget {
         }
 
         if (viewModel.error != null) {
-          return Scaffold(
-            body: Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.error_outline, size: 48, color: Colors.red),
-                  SizedBox(height: 16),
-                  Text('Error: ${viewModel.error}'),
-                  SizedBox(height: 16),
-                  ElevatedButton(
-                    onPressed: () => viewModel.initialize(),
-                    child: Text('Retry'),
-                  ),
-                ],
-              ),
-            ),
+          return SimpleErrorPage(
+            errorMessage: viewModel.error!,
+            stackTrace: null, // You can pass the stack trace if available
           );
         }
 
