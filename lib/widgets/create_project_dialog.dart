@@ -1,7 +1,7 @@
 // widgets/create_project_dialog.dart
 import 'package:claude_chat_clone/models/project.dart';
 import 'package:claude_chat_clone/services/project_service.dart';
-import 'package:claude_chat_clone/viewmodel/app_state.dart';
+import 'package:claude_chat_clone/viewmodels/app_state.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 

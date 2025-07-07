@@ -3,7 +3,7 @@ import 'package:claude_chat_clone/firebase_options.dart';
 import 'package:claude_chat_clone/screens/screens.dart';
 import 'package:claude_chat_clone/services/global_keys.dart';
 import 'package:claude_chat_clone/style/app_theme.dart';
-import 'package:claude_chat_clone/viewmodel/app_state.dart';
+import 'package:claude_chat_clone/viewmodels/app_state.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
