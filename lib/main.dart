@@ -4,6 +4,8 @@ import 'package:claude_chat_clone/screens/screens.dart';
 import 'package:claude_chat_clone/services/global_keys.dart';
 import 'package:claude_chat_clone/style/app_theme.dart';
 import 'package:claude_chat_clone/viewmodels/app_state.dart';
+import 'package:claude_chat_clone/viewmodels/chat_viewmodel.dart';
+import 'package:claude_chat_clone/viewmodels/home_viewmodel.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -19,7 +21,22 @@ void main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
-  runApp(MyApp());
+  runApp(
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider<AppState>(
+          create: (_) => AppState(),
+        ),
+        ChangeNotifierProvider(
+          create: (_) => HomeViewModel(),
+        ),
+        ChangeNotifierProvider(
+          create: (_) => ChatViewModel(),
+        )
+      ],
+      child: const MyApp(),
+    ),
+  );
 }
 
 class MyApp extends StatelessWidget {
@@ -27,17 +44,14 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider(
-      create: (context) => AppState(),
-      child: MaterialApp(
-        title: 'Claude Clone',
-        scaffoldMessengerKey: scaffoldMessengerKey,
-        themeMode: ThemeMode.dark,
-        darkTheme: darkTheme,
-        theme: lightTheme,
-        home: HomeScreen(),
-        debugShowCheckedModeBanner: false,
-      ),
+    return MaterialApp(
+      title: 'Claude Clone',
+      scaffoldMessengerKey: scaffoldMessengerKey,
+      themeMode: ThemeMode.dark,
+      darkTheme: darkTheme,
+      theme: lightTheme,
+      home: HomeScreen(),
+      debugShowCheckedModeBanner: false,
     );
   }
 }
