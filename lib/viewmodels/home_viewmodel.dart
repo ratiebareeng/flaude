@@ -1,8 +1,12 @@
 import 'package:claude_chat_clone/models/models.dart';
 import 'package:claude_chat_clone/repositories/chat_repository.dart';
 import 'package:flutter/foundation.dart';
+import 'package:uuid/uuid.dart';
 
 class HomeViewModel extends ChangeNotifier {
+  final ChatRepository _chatRepository = ChatRepository.instance;
+  final Uuid _uuid = Uuid();
+
   // Private state
   String _currentView = 'chat';
   String? _selectedChatId;
@@ -52,12 +56,31 @@ class HomeViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
-  void createNewChat() {
-    _currentView = 'new_chat';
-    _selectedChatId = null;
-    _showArtifactDetail = false;
-    _currentArtifact = null;
-    notifyListeners();
+  /// Create a new chat
+  Future<Chat?> createNewChat({String? title, String? projectId}) async {
+    try {
+      final now = DateTime.now();
+      final chat = Chat(
+        id: '',
+        title: title ?? 'Untitled',
+        messages: [],
+        createdAt: now,
+        updatedAt: now,
+        projectId: projectId,
+      );
+
+      _currentView = 'new_chat';
+      _selectedChatId = null;
+      _showArtifactDetail = false;
+      _currentArtifact = null;
+      notifyListeners();
+
+      return chat;
+    } catch (e) {
+      _error = 'Failed to create new chat: $e';
+      notifyListeners();
+      return null;
+    }
   }
 
   void handleArtifactView(Map<String, dynamic>? artifact) {
@@ -73,10 +96,10 @@ class HomeViewModel extends ChangeNotifier {
       _error = null;
       notifyListeners();
 
-      final result = await ChatRepository.instance.readRecentChats();
-      if (result.$2 != null) {
+      final (success, chats) = await _chatRepository.readRecentChats();
+      if (success && chats != null) {
         _recentChats.clear();
-        _recentChats.addAll(result.$2!);
+        _recentChats.addAll(chats);
       }
 
       _isLoading = false;
