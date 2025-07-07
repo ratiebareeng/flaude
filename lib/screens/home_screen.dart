@@ -20,6 +20,8 @@ class HomeScreen extends StatelessWidget {
   }
 }
 
+
+// Move to HomeScreen build above 
 class _HomeScreenContent extends StatelessWidget {
   const _HomeScreenContent();
 
