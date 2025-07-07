@@ -1,13 +1,10 @@
-// screens/chat_screen.dart
-import 'dart:developer';
-
 import 'package:claude_chat_clone/models/ai_models_list.dart';
 import 'package:claude_chat_clone/models/models.dart';
-import 'package:claude_chat_clone/repositories/chat_repository.dart';
-import 'package:claude_chat_clone/screens/services/chat_service.dart';
+import 'package:claude_chat_clone/viewmodels/chat_viewmodel.dart';
 import 'package:claude_chat_clone/widgets/ai_model_dropdown_menu.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
 
 class ChatScreen extends StatefulWidget {
   final String? chatId;
@@ -27,94 +24,62 @@ class _ChatScreenState extends State<ChatScreen> {
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   final FocusNode _messageFocusNode = FocusNode();
-  late Chat chat;
-  bool _initDone = false;
-  bool _isLoading = false;
+
+  late ChatViewModel _viewModel;
 
   @override
   Widget build(BuildContext context) {
-    return !_initDone
-        ? Center(child: CircularProgressIndicator())
-        : StreamBuilder<(bool, List<Message>?)>(
-            stream: ChatRepository.instance.listenToChatMessages(chat.id),
-            builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return Center(
-                  child: CircularProgressIndicator(
-                    valueColor:
-                        AlwaysStoppedAnimation<Color>(Color(0xFFCD7F32)),
-                  ),
-                );
-              }
-              if (snapshot.hasError) {
-                return Center(
-                  child: Text(
-                    'Error loading messages',
-                    style: TextStyle(color: Colors.red),
-                  ),
-                );
-              }
-              final List<Message> messages = snapshot.data?.$2 ?? [];
+    return Consumer<ChatViewModel>(
+      builder: (context, viewModel, child) {
+        if (!viewModel.isInitialized) {
+          return const Center(child: CircularProgressIndicator());
+        }
 
-              if (messages.isEmpty) {
-                return _buildEmptyState();
-              }
-              return Container(
-                color: Color(0xFF1A1917), // Dark background like Claude
-                child: Column(
-                  children: [
-                    // Messages Area
-                    Expanded(
-                      child: messages.isEmpty
-                          ? _buildEmptyState()
-                          : ListView.builder(
-                              controller: _scrollController,
-                              padding: EdgeInsets.symmetric(
-                                  horizontal: 24, vertical: 16),
-                              itemCount: messages.length + (_isLoading ? 1 : 0),
-                              itemBuilder: (context, index) {
-                                if (index == messages.length) {
-                                  return _buildLoadingIndicator();
-                                }
-                                return _buildMessageBubble(messages[index]);
-                              },
-                            ),
-                    ),
-
-                    if (messages.isNotEmpty)
-                      // Input Area
-                      Container(
-                        padding: EdgeInsets.all(24),
-                        child: Column(
-                          children: [
-                            // Input field
-                            Container(
-                              constraints: BoxConstraints(maxWidth: 800),
-                              child: inputRow(),
-                            ),
-
-                            AIModelDropDownMenu(
-                              menuEntries: claudeModels,
-                              initialEntry: claudeModels.first,
-                              onSelected: (model) {
-                                // Handle model selection
-                                log('Selected model: ${model.name}');
-                              },
-                            ),
-                          ],
-                        ),
-                      ),
-                  ],
+        if (viewModel.error != null) {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  viewModel.error!,
+                  style: const TextStyle(color: Colors.red),
                 ),
-              );
-            });
+                ElevatedButton(
+                  onPressed: () {
+                    viewModel.clearError();
+                    _viewModel.initialize(widget.chatId);
+                  },
+                  child: const Text('Retry'),
+                ),
+              ],
+            ),
+          );
+        }
+
+        return Container(
+          color: const Color(0xFF1A1917),
+          child: Column(
+            children: [
+              // Messages Area
+              Expanded(
+                child: viewModel.hasMessages
+                    ? _buildMessagesList(viewModel)
+                    : _buildEmptyState(viewModel),
+              ),
+              // Input Area
+              if (viewModel.hasMessages) _buildInputArea(viewModel),
+            ],
+          ),
+        );
+      },
+    );
   }
 
   @override
   void didUpdateWidget(ChatScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.chatId != widget.chatId) {
-//!      _loadChatMessages();
+      _viewModel.initialize(widget.chatId);
     }
   }
 
@@ -129,260 +94,15 @@ class _ChatScreenState extends State<ChatScreen> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) async {
-      setState(() {
-        _isLoading = true;
-      });
-
-      var result = await ChatService.instance.initialize(widget.chatId);
-
-      if (result != null) {
-        chat = result;
-      }
-
-      setState(() {
-        _initDone = true;
-        _isLoading = false;
-      });
-    });
-    //_loadChatMessages();
-    // _messageController.addListener(() {
-    //   setState(() {}); // Rebuild to update send button state
-    // });
-  }
-
-  Widget inputRow() {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.end,
-      children: [
-        // Attach button
-        Container(
-          margin: EdgeInsets.only(right: 8, bottom: 8),
-          child: IconButton(
-            onPressed: () {
-              // Handle attachment
-            },
-            icon: Icon(Icons.attach_file, color: Colors.grey[400]),
-            style: IconButton.styleFrom(
-              backgroundColor: Colors.transparent,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-            ),
-          ),
-        ),
-
-        // Text input
-        Expanded(
-          child: Container(
-            decoration: BoxDecoration(
-              color: Color(0xFF2F2F2F),
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: Colors.grey[700]!),
-            ),
-            child: TextField(
-              controller: _messageController,
-              focusNode: _messageFocusNode,
-              maxLines: null,
-              minLines: 1,
-              keyboardType: TextInputType.multiline,
-              textInputAction: TextInputAction.newline,
-              onSubmitted: (value) async {
-                if (_messageController.text.trim().isEmpty || _isLoading) {
-                  return;
-                }
-                await ChatService.instance.sendMessage(
-                  chatId: chat.id,
-                  content: _messageController.text.trim(),
-                );
-              },
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 16,
-                height: 1.4,
-              ),
-              decoration: InputDecoration(
-                hintText: 'How can I help you today?',
-                hintStyle: TextStyle(
-                  color: Colors.grey[500],
-                  fontSize: 16,
-                ),
-                border: InputBorder.none,
-                contentPadding: EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 12,
-                ),
-              ),
-            ),
-          ),
-        ),
-
-        // Send button
-        Container(
-          margin: EdgeInsets.only(left: 8, bottom: 8),
-          child: IconButton(
-            onPressed: () async {
-              if (_messageController.text.trim().isEmpty || _isLoading) {
-                return;
-              }
-              await ChatService.instance.sendMessage(
-                chatId: chat.id,
-                content: _messageController.text.trim(),
-              );
-            },
-            icon: Icon(
-              Icons.arrow_upward_rounded,
-              color: _messageController.text.trim().isEmpty || _isLoading
-                  ? Colors.grey[600]
-                  : Colors.white,
-            ),
-            style: IconButton.styleFrom(
-              backgroundColor:
-                  _messageController.text.trim().isEmpty || _isLoading
-                      ? Colors.grey[800]
-                      : Color(0xFFCD7F32), // Claude orange
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-              padding: EdgeInsets.all(8),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget largeInputWidget() {
-    return Container(
-      constraints: BoxConstraints(maxWidth: 800),
-      padding: EdgeInsets.symmetric(horizontal: 4, vertical: 8),
-      decoration: BoxDecoration(
-        //  color: Color(0xFF2F2F2F),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.grey[700]!),
-      ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.start,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          TextField(
-            controller: _messageController,
-            focusNode: _messageFocusNode,
-            maxLines: null,
-            minLines: 2,
-            keyboardType: TextInputType.multiline,
-            textInputAction: TextInputAction.newline,
-            onSubmitted: (value) async {
-              if (_messageController.text.trim().isEmpty || _isLoading) {
-                return;
-              }
-
-              // Create chat if it doesnt have an id
-              if (chat.id.isEmpty) {
-                final newChat = await ChatService.instance.saveChat(chat);
-
-                if (newChat == null || newChat.id.isEmpty) {
-                  return;
-                }
-
-                setState(() {
-                  chat = newChat;
-                });
-              }
-              await ChatService.instance.sendMessage(
-                chatId: chat.id,
-                content: _messageController.text.trim(),
-              );
-            },
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 16,
-              height: 1.4,
-            ),
-            decoration: InputDecoration(
-              fillColor: Colors.transparent,
-              hoverColor: Colors.transparent,
-              hintText: 'How can I help you today?',
-              hintStyle: TextStyle(
-                color: Colors.grey[500],
-                fontSize: 16,
-              ),
-              border: InputBorder.none,
-              focusedBorder: InputBorder.none,
-              enabledBorder: InputBorder.none,
-              errorBorder: InputBorder.none,
-              disabledBorder: InputBorder.none,
-            ),
-          ),
-
-          // Agent selector and send button row
-          SizedBox(height: 12),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.end,
-            children: [
-              // Agent selector
-              AIModelDropDownMenu(
-                menuEntries: claudeModels,
-                initialEntry: claudeModels.first,
-                onSelected: (model) {
-                  // Handle model selection
-                  log('Selected model: ${model.name}');
-                },
-              ),
-
-              // Send button
-              IconButton(
-                onPressed: () async {
-                  // Create chat if it doesnt have an id
-                  if (chat.id.isEmpty) {
-                    final newChat = await ChatService.instance.saveChat(chat);
-
-                    if (newChat == null || newChat.id.isEmpty) {
-                      return;
-                    }
-
-                    setState(() {
-                      chat = newChat;
-                    });
-                  }
-                  await ChatService.instance.sendMessage(
-                    chatId: chat.id,
-                    content: _messageController.text.trim(),
-                  );
-                },
-                icon: Icon(
-                  Icons.arrow_upward_rounded,
-                  color: _messageController.text.trim().isEmpty || _isLoading
-                      ? Colors.grey[600]
-                      : Colors.white,
-                ),
-                // color: _messageController.text.trim().isEmpty || _isLoading
-                //     ? Theme.of(context).primaryColor //.withValues(alpha: 0.5)
-                //     : Theme.of(context).primaryColor,
-                // style: IconButton.styleFrom(
-                //   // backgroundColor: _messageController.text.trim().isEmpty ||
-                //   //         _isLoading
-                //   //     ? Theme.of(context).primaryColor //.withValues(alpha: 0.5)
-                //   //     : Theme.of(context)
-                //   //         .primaryColor, //Color(0xFFCD7F32), // Claude orange
-                //   shape: RoundedRectangleBorder(
-                //     borderRadius: BorderRadius.circular(8),
-                //   ),
-                //   padding: EdgeInsets.all(8),
-                // ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
+    _viewModel = Provider.of<ChatViewModel>(context, listen: false);
+    _initializeChat();
   }
 
   Widget _buildArtifactPreview(Map<String, dynamic> artifact) {
     return Container(
-      margin: EdgeInsets.only(top: 12),
+      margin: const EdgeInsets.only(top: 12),
       decoration: BoxDecoration(
-        color: Color(0xFF2F2F2F),
+        color: const Color(0xFF2F2F2F),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: Colors.grey[700]!),
       ),
@@ -390,7 +110,7 @@ class _ChatScreenState extends State<ChatScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
-            padding: EdgeInsets.all(16),
+            padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
               border: Border(
                 bottom: BorderSide(color: Colors.grey[700]!),
@@ -399,18 +119,18 @@ class _ChatScreenState extends State<ChatScreen> {
             child: Row(
               children: [
                 Container(
-                  padding: EdgeInsets.all(6),
+                  padding: const EdgeInsets.all(6),
                   decoration: BoxDecoration(
-                    color: Color(0xFF4A4A4A),
+                    color: const Color(0xFF4A4A4A),
                     borderRadius: BorderRadius.circular(6),
                   ),
-                  child: Icon(Icons.code, color: Colors.white, size: 16),
+                  child: const Icon(Icons.code, color: Colors.white, size: 16),
                 ),
-                SizedBox(width: 12),
+                const SizedBox(width: 12),
                 Expanded(
                   child: Text(
                     artifact['title'] ?? 'Artifact',
-                    style: TextStyle(
+                    style: const TextStyle(
                       color: Colors.white,
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
@@ -419,22 +139,23 @@ class _ChatScreenState extends State<ChatScreen> {
                 ),
                 TextButton.icon(
                   onPressed: () => _viewArtifact(artifact),
-                  icon: Icon(Icons.open_in_new, size: 16),
-                  label: Text('View'),
+                  icon: const Icon(Icons.open_in_new, size: 16),
+                  label: const Text('View'),
                   style: TextButton.styleFrom(
-                    foregroundColor: Color(0xFFCD7F32),
-                    padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    foregroundColor: const Color(0xFFCD7F32),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                   ),
                 ),
               ],
             ),
           ),
           Container(
-            padding: EdgeInsets.all(16),
+            padding: const EdgeInsets.all(16),
             child: Text(
               artifact['content']?.substring(0, 100) ?? 'No preview available',
-              style: TextStyle(
-                color: Colors.grey[300],
+              style: const TextStyle(
+                color: Colors.grey,
                 fontSize: 14,
                 fontFamily: 'Consolas',
                 height: 1.4,
@@ -448,96 +169,236 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
-  Widget _buildEmptyState() {
+  Widget _buildEmptyState(ChatViewModel viewModel) {
     return Center(
       child: Container(
-        constraints: BoxConstraints(maxWidth: 600),
+        constraints: const BoxConstraints(maxWidth: 600),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            // Greeting
-            Row(
-              children: [
-                // Flaude logo/icon
-                Container(
-                  width: 48,
-                  height: 48,
-                  decoration: BoxDecoration(
-                    color: Color(0xFFCD7F32),
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: Icon(
-                    Icons.psychology_outlined,
-                    size: 32,
-                    color: Colors.grey.shade300,
-                  ),
-                ),
-                SizedBox(width: 24),
-                Text(
-                  'Evening, naledi',
-                  style: TextStyle(
-                    fontFamily: GoogleFonts.gideonRoman().fontFamily,
-                    color: Colors.grey,
-                    fontSize: 48,
-                    fontWeight: FontWeight.w600,
-                    letterSpacing: 1.5,
-                  ),
-                ),
-              ],
-            ),
-
-            SizedBox(height: 48),
-
-            largeInputWidget(),
-
-            SizedBox(height: 16),
-            // Suggestion buttons
-            Wrap(
-              spacing: 12,
-              runSpacing: 12,
-              children: [
-                _buildSuggestionChip('✏️ Write', 'Draft an email to my team',
-                    // Icons.edit_outlined,
-                    showSubtitle: false),
-                _buildSuggestionChip('📚 Learn', 'Explain quantum computing',
-                    //Icons.school_outlined,
-                    showSubtitle: false),
-                _buildSuggestionChip(
-                    '💻 Code', 'Build a Flutter app', //Icons.code_outlined,
-                    showSubtitle: false),
-                _buildSuggestionChip('☕ Life stuff', 'Plan my weekend',
-                    //  Icons.local_cafe_outlined,
-                    showSubtitle: false),
-                _buildSuggestionChip(
-                  '🎲 Claude\'s choice',
-                  'Surprise me',
-                  // Icons.casino_outlined,
-                  showSubtitle: false,
-                ),
-              ],
-            ),
+            _buildGreeting(),
+            const SizedBox(height: 48),
+            _buildLargeInputWidget(viewModel),
+            const SizedBox(height: 16),
+            _buildSuggestionChips(viewModel),
           ],
         ),
       ),
     );
   }
 
+  Widget _buildGreeting() {
+    return Row(
+      children: [
+        Container(
+          width: 48,
+          height: 48,
+          decoration: BoxDecoration(
+            color: const Color(0xFFCD7F32),
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Icon(
+            Icons.psychology_outlined,
+            size: 32,
+            color: Colors.grey.shade300,
+          ),
+        ),
+        const SizedBox(width: 24),
+        Text(
+          'Evening, naledi',
+          style: TextStyle(
+            fontFamily: GoogleFonts.gideonRoman().fontFamily,
+            color: Colors.grey,
+            fontSize: 48,
+            fontWeight: FontWeight.w600,
+            letterSpacing: 1.5,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildInputArea(ChatViewModel viewModel) {
+    return Container(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        children: [
+          Container(
+            constraints: const BoxConstraints(maxWidth: 800),
+            child: _buildInputRow(viewModel),
+          ),
+          AIModelDropDownMenu(
+            menuEntries: claudeModels,
+            initialEntry: claudeModels.first,
+            onSelected: (model) {
+              // Handle model selection
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInputRow(ChatViewModel viewModel) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        // Attach button
+        Container(
+          margin: const EdgeInsets.only(right: 8, bottom: 8),
+          child: IconButton(
+            onPressed: () {
+              // Handle attachment
+            },
+            icon: Icon(Icons.attach_file, color: Colors.grey[400]),
+            style: IconButton.styleFrom(
+              backgroundColor: Colors.transparent,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+          ),
+        ),
+        // Text input
+        Expanded(
+          child: Container(
+            decoration: BoxDecoration(
+              color: const Color(0xFF2F2F2F),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: Colors.grey[700]!),
+            ),
+            child: TextField(
+              controller: _messageController,
+              focusNode: _messageFocusNode,
+              maxLines: null,
+              minLines: 1,
+              keyboardType: TextInputType.multiline,
+              textInputAction: TextInputAction.newline,
+              onSubmitted: (_) => _sendMessage(viewModel),
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 16,
+                height: 1.4,
+              ),
+              decoration: InputDecoration(
+                hintText: 'How can I help you today?',
+                hintStyle: TextStyle(
+                  color: Colors.grey[500],
+                  fontSize: 16,
+                ),
+                border: InputBorder.none,
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
+                ),
+              ),
+            ),
+          ),
+        ),
+        // Send button
+        Container(
+          margin: const EdgeInsets.only(left: 8, bottom: 8),
+          child: IconButton(
+            onPressed: () => _sendMessage(viewModel),
+            icon: Icon(
+              Icons.arrow_upward_rounded,
+              color:
+                  _canSendMessage(viewModel) ? Colors.white : Colors.grey[600],
+            ),
+            style: IconButton.styleFrom(
+              backgroundColor: _canSendMessage(viewModel)
+                  ? const Color(0xFFCD7F32)
+                  : Colors.grey[800],
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+              padding: const EdgeInsets.all(8),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildLargeInputWidget(ChatViewModel viewModel) {
+    return Container(
+      constraints: const BoxConstraints(maxWidth: 800),
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.grey[700]!),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          TextField(
+            controller: _messageController,
+            focusNode: _messageFocusNode,
+            maxLines: null,
+            minLines: 2,
+            keyboardType: TextInputType.multiline,
+            textInputAction: TextInputAction.newline,
+            onSubmitted: (_) => _sendMessage(viewModel),
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 16,
+              height: 1.4,
+            ),
+            decoration: InputDecoration(
+              hintText: 'How can I help you today?',
+              hintStyle: TextStyle(
+                color: Colors.grey[500],
+                fontSize: 16,
+              ),
+              border: InputBorder.none,
+              focusedBorder: InputBorder.none,
+              enabledBorder: InputBorder.none,
+              errorBorder: InputBorder.none,
+              disabledBorder: InputBorder.none,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              AIModelDropDownMenu(
+                menuEntries: claudeModels,
+                initialEntry: claudeModels.first,
+                onSelected: (model) {
+                  // Handle model selection
+                },
+              ),
+              IconButton(
+                onPressed: () => _sendMessage(viewModel),
+                icon: Icon(
+                  Icons.arrow_upward_rounded,
+                  color: _canSendMessage(viewModel)
+                      ? Colors.white
+                      : Colors.grey[600],
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildLoadingIndicator() {
     return Container(
-      constraints: BoxConstraints(maxWidth: 800),
-      margin: EdgeInsets.symmetric(vertical: 16),
+      constraints: const BoxConstraints(maxWidth: 800),
+      margin: const EdgeInsets.symmetric(vertical: 16),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Claude avatar
           Container(
             width: 32,
             height: 32,
             decoration: BoxDecoration(
-              color: Color(0xFFCD7F32),
+              color: const Color(0xFFCD7F32),
               borderRadius: BorderRadius.circular(8),
             ),
-            child: Center(
+            child: const Center(
               child: Text(
                 'C',
                 style: TextStyle(
@@ -548,17 +409,15 @@ class _ChatScreenState extends State<ChatScreen> {
               ),
             ),
           ),
-          SizedBox(width: 12),
-
-          // Loading content
+          const SizedBox(width: 12),
           Expanded(
             child: Container(
-              padding: EdgeInsets.all(16),
+              padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: Color(0xFF2F2F2F),
+                color: const Color(0xFF2F2F2F),
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: Row(
+              child: const Row(
                 children: [
                   SizedBox(
                     width: 20,
@@ -573,7 +432,7 @@ class _ChatScreenState extends State<ChatScreen> {
                   Text(
                     'Claude is thinking...',
                     style: TextStyle(
-                      color: Colors.grey[400],
+                      color: Colors.grey,
                       fontSize: 14,
                     ),
                   ),
@@ -586,23 +445,22 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
-  Widget _buildMessageBubble(Message message) {
+  Widget _buildMessageBubble(Message message, ChatViewModel viewModel) {
     return Container(
-      constraints: BoxConstraints(maxWidth: 800),
-      margin: EdgeInsets.symmetric(vertical: 8),
+      constraints: const BoxConstraints(maxWidth: 800),
+      margin: const EdgeInsets.symmetric(vertical: 8),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           if (!message.isUser) ...[
-            // Claude avatar
             Container(
               width: 32,
               height: 32,
               decoration: BoxDecoration(
-                color: Color(0xFFCD7F32),
+                color: const Color(0xFFCD7F32),
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: Center(
+              child: const Center(
                 child: Text(
                   'C',
                   style: TextStyle(
@@ -613,7 +471,7 @@ class _ChatScreenState extends State<ChatScreen> {
                 ),
               ),
             ),
-            SizedBox(width: 12),
+            const SizedBox(width: 12),
           ],
           Expanded(
             child: Column(
@@ -622,10 +480,11 @@ class _ChatScreenState extends State<ChatScreen> {
                   : CrossAxisAlignment.start,
               children: [
                 Container(
-                  padding: EdgeInsets.all(16),
+                  padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color:
-                        message.isUser ? Color(0xFF3A3A3A) : Color(0xFF2F2F2F),
+                    color: message.isUser
+                        ? const Color(0xFF3A3A3A)
+                        : const Color(0xFF2F2F2F),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Column(
@@ -633,7 +492,7 @@ class _ChatScreenState extends State<ChatScreen> {
                     children: [
                       Text(
                         message.content,
-                        style: TextStyle(
+                        style: const TextStyle(
                           color: Colors.white,
                           fontSize: 16,
                           height: 1.5,
@@ -644,9 +503,9 @@ class _ChatScreenState extends State<ChatScreen> {
                     ],
                   ),
                 ),
-                SizedBox(height: 8),
+                const SizedBox(height: 8),
                 Text(
-                  _formatTimestamp(message.timestamp),
+                  viewModel.formatTimestamp(message.timestamp),
                   style: TextStyle(
                     color: Colors.grey[500],
                     fontSize: 12,
@@ -656,8 +515,7 @@ class _ChatScreenState extends State<ChatScreen> {
             ),
           ),
           if (message.isUser) ...[
-            SizedBox(width: 12),
-            // User avatar
+            const SizedBox(width: 12),
             Container(
               width: 32,
               height: 32,
@@ -665,7 +523,7 @@ class _ChatScreenState extends State<ChatScreen> {
                 color: Colors.grey[600],
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: Icon(
+              child: const Icon(
                 Icons.person,
                 color: Colors.white,
                 size: 18,
@@ -677,28 +535,28 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
-  Widget _buildSuggestionChip(
-    String title,
-    String subtitle, {
-    bool? showSubtitle = true,
-    IconData? icon,
-  }) {
-    return InkWell(
-      onTap: () async {
-        _messageController.text = subtitle;
-        if (_messageController.text.trim().isEmpty || _isLoading) {
-          return;
+  Widget _buildMessagesList(ChatViewModel viewModel) {
+    return ListView.builder(
+      controller: _scrollController,
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+      itemCount: viewModel.messages.length + (viewModel.isSending ? 1 : 0),
+      itemBuilder: (context, index) {
+        if (index == viewModel.messages.length) {
+          return _buildLoadingIndicator();
         }
-        await ChatService.instance.sendMessage(
-          chatId: chat.id,
-          content: _messageController.text.trim(),
-        );
+        return _buildMessageBubble(viewModel.messages[index], viewModel);
       },
+    );
+  }
+
+  Widget _buildSuggestionChip(
+      String title, String subtitle, ChatViewModel viewModel) {
+    return InkWell(
+      onTap: () => viewModel.sendSuggestion(subtitle),
       borderRadius: BorderRadius.circular(12),
       child: Container(
-        padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
         decoration: BoxDecoration(
-          // color: Color(0xFF2F2F2F),
           borderRadius: BorderRadius.circular(8),
           border: Border.all(color: Colors.grey[700]!),
         ),
@@ -713,91 +571,61 @@ class _ChatScreenState extends State<ChatScreen> {
                 fontWeight: FontWeight.w400,
               ),
             ),
-            if (showSubtitle!) ...[
-              SizedBox(height: 4),
-              Text(
-                subtitle,
-                style: TextStyle(
-                  color: Colors.grey[400],
-                  fontSize: 12,
-                ),
+            const SizedBox(height: 4),
+            Text(
+              subtitle,
+              style: TextStyle(
+                color: Colors.grey[400],
+                fontSize: 12,
               ),
-            ],
+            ),
           ],
         ),
       ),
     );
   }
 
-  String _formatTimestamp(DateTime timestamp) {
-    final now = DateTime.now();
-    final difference = now.difference(timestamp);
+  Widget _buildSuggestionChips(ChatViewModel viewModel) {
+    final suggestions = [
+      ('✏️ Write', 'Draft an email to my team'),
+      ('📚 Learn', 'Explain quantum computing'),
+      ('💻 Code', 'Build a Flutter app'),
+      ('☕ Life stuff', 'Plan my weekend'),
+      ('🎲 Claude\'s choice', 'Surprise me'),
+    ];
 
-    if (difference.inMinutes < 1) {
-      return 'Just now';
-    } else if (difference.inMinutes < 60) {
-      return '${difference.inMinutes}m ago';
-    } else if (difference.inHours < 24) {
-      return '${difference.inHours}h ago';
-    } else {
-      return '${difference.inDays}d ago';
-    }
+    return Wrap(
+      spacing: 12,
+      runSpacing: 12,
+      children: suggestions
+          .map((suggestion) => _buildSuggestionChip(
+                suggestion.$1,
+                suggestion.$2,
+                viewModel,
+              ))
+          .toList(),
+    );
   }
 
-  String _generateAIResponse(String userMessage) {
-    if (userMessage.toLowerCase().contains('flutter')) {
-      return 'Flutter is Google\'s UI toolkit for building natively compiled applications for mobile, web, and desktop from a single codebase. What specific aspect of Flutter development would you like to explore?';
-    } else if (userMessage.toLowerCase().contains('dart')) {
-      return 'Dart is the programming language used by Flutter. It\'s object-oriented, supports both just-in-time and ahead-of-time compilation, and offers features like null safety and async programming.';
-    } else if (userMessage.toLowerCase().contains('code') ||
-        userMessage.toLowerCase().contains('build')) {
-      return 'I\'d be happy to help you with coding! Here\'s a simple example to get you started:';
-    } else {
-      return 'I understand you\'re asking about: "$userMessage". I\'m here to help! Could you provide more specific details about what you\'re trying to achieve?';
-    }
+  // Helper methods
+  bool _canSendMessage(ChatViewModel viewModel) {
+    return _messageController.text.trim().isNotEmpty && !viewModel.isSending;
   }
 
-  void _scrollToBottom() {
+  void _initializeChat() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (_scrollController.hasClients) {
-        _scrollController.animateTo(
-          _scrollController.position.maxScrollExtent,
-          duration: Duration(milliseconds: 300),
-          curve: Curves.easeOut,
-        );
-      }
+      _viewModel.initialize(widget.chatId);
     });
   }
 
-  // void _sendMessage() async {
-  //   if (_messageController.text.trim().isEmpty || _isLoading) return;
+  void _sendMessage(ChatViewModel viewModel) async {
+    if (!_canSendMessage(viewModel)) return;
 
-  //   // Create chat if not already created
-  //   if (chat.id.isEmpty) {
-  //     await ChatService.instance.createChat();
-  //   }
+    final message = _messageController.text.trim();
+    _messageController.clear();
 
-  //   final userMessage = Message(
-  //     chatId: chat.id,
-  //     id: DateTime.now().millisecondsSinceEpoch.toString(),
-  //     content: _messageController.text.trim(),
-  //     isUser: true,
-  //     timestamp: DateTime.now(),
-  //   );
-
-  //   setState(() {
-  //     //! _messages.add(userMessage);
-  //     _isLoading = true;
-  //   });
-
-  //   // add message to chat
-  //   //? await ChatService.instance.addMessageToChat(chat.id, userMessage);
-
-  //   _messageController.clear();
-  //   _scrollToBottom();
-
-  //   //_simulateAIResponse(userMessage.content);
-  // }
+    await viewModel.sendMessage(message);
+  }
 
   void _viewArtifact(Map<String, dynamic> artifact) {
     if (widget.onArtifactView != null) {
