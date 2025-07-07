@@ -5,6 +5,7 @@ import 'package:claude_chat_clone/services/global_keys.dart';
 import 'package:claude_chat_clone/style/app_theme.dart';
 import 'package:claude_chat_clone/viewmodels/app_state.dart';
 import 'package:claude_chat_clone/viewmodels/chat_viewmodel.dart';
+import 'package:claude_chat_clone/viewmodels/chats_viewmodel.dart';
 import 'package:claude_chat_clone/viewmodels/home_viewmodel.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
@@ -32,6 +33,9 @@ void main() async {
         ),
         ChangeNotifierProvider(
           create: (_) => ChatViewModel(),
+        ),
+        ChangeNotifierProvider(
+          create: (_) => ChatsViewModel(),
         )
       ],
       child: const MyApp(),
