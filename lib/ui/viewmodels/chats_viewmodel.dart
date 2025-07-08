@@ -1,9 +1,9 @@
 import 'dart:async';
 import 'dart:developer';
 
-import 'package:claude_chat_clone/models/models.dart';
-import 'package:claude_chat_clone/repositories/chat_repository.dart';
-import 'package:claude_chat_clone/services/global_keys.dart';
+import 'package:claude_chat_clone/data/repositories/chat_repository.dart';
+import 'package:claude_chat_clone/data/services/global_keys.dart';
+import 'package:claude_chat_clone/domain/models/models.dart';
 import 'package:flutter/material.dart';
 
 class ChatsViewModel extends ChangeNotifier {

@@ -1,7 +1,7 @@
-import 'package:claude_chat_clone/models/ai_models_list.dart';
-import 'package:claude_chat_clone/models/models.dart';
-import 'package:claude_chat_clone/viewmodels/chat_viewmodel.dart';
-import 'package:claude_chat_clone/widgets/ai_model_dropdown_menu.dart';
+import 'package:claude_chat_clone/domain/models/ai_models_list.dart';
+import 'package:claude_chat_clone/domain/models/models.dart';
+import 'package:claude_chat_clone/ui/viewmodels/chat_viewmodel.dart';
+import 'package:claude_chat_clone/ui/widgets/ai_model_dropdown_menu.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';

@@ -1,8 +1,8 @@
 import 'dart:convert';
 import 'dart:developer';
 
-import 'package:claude_chat_clone/models/models.dart';
-import 'package:claude_chat_clone/services/services.dart';
+import 'package:claude_chat_clone/data/services/services.dart';
+import 'package:claude_chat_clone/domain/models/models.dart';
 import 'package:firebase_core/firebase_core.dart';
 
 class ChatRepository {

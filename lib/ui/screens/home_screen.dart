@@ -1,6 +1,6 @@
 import 'package:claude_chat_clone/plugins/error_manager/error_manager.dart';
-import 'package:claude_chat_clone/viewmodels/home_viewmodel.dart';
-import 'package:claude_chat_clone/widgets/widgets.dart';
+import 'package:claude_chat_clone/ui/viewmodels/home_viewmodel.dart';
+import 'package:claude_chat_clone/ui/widgets/widgets.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 

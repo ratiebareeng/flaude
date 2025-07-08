@@ -1,5 +1,5 @@
+import 'package:claude_chat_clone/domain/models/models.dart';
 import 'package:claude_chat_clone/helpers/helpers.dart';
-import 'package:claude_chat_clone/models/models.dart';
 import 'package:flutter/material.dart';
 
 class ProjectSummaryWidget extends StatelessWidget {

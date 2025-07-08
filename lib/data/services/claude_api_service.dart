@@ -1,6 +1,6 @@
 import 'dart:convert';
 
-import 'package:claude_chat_clone/models/models.dart';
+import 'package:claude_chat_clone/domain/models/models.dart';
 import 'package:http/http.dart' as http;
 
 class ClaudeApiService {

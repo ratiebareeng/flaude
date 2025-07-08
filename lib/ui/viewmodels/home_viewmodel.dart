@@ -1,5 +1,5 @@
-import 'package:claude_chat_clone/models/models.dart';
-import 'package:claude_chat_clone/repositories/chat_repository.dart';
+import 'package:claude_chat_clone/data/repositories/chat_repository.dart';
+import 'package:claude_chat_clone/domain/models/models.dart';
 import 'package:flutter/foundation.dart';
 import 'package:uuid/uuid.dart';
 

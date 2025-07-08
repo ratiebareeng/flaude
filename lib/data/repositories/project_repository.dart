@@ -3,7 +3,7 @@ import 'dart:developer';
 
 import 'package:firebase_core/firebase_core.dart';
 
-import '../models/project.dart';
+import '../../domain/models/project.dart';
 import '../services/firebase_rtdb_service.dart';
 
 class ProjectRepository {

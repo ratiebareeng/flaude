@@ -1,5 +1,5 @@
-import 'package:claude_chat_clone/models/models.dart';
-import 'package:claude_chat_clone/widgets/navigation_item.dart';
+import 'package:claude_chat_clone/domain/models/models.dart';
+import 'package:claude_chat_clone/ui/widgets/navigation_item.dart';
 import 'package:flutter/material.dart';
 
 class NavigationDrawerWidget extends StatefulWidget {

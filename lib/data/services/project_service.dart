@@ -1,7 +1,7 @@
-import 'package:claude_chat_clone/services/global_keys.dart';
+import 'package:claude_chat_clone/data/services/global_keys.dart';
 import 'package:flutter/material.dart';
 
-import '../models/project.dart';
+import '../../domain/models/project.dart';
 import '../repositories/project_repository.dart';
 
 class ProjectService {
