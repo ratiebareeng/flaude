@@ -29,7 +29,7 @@ void main() async {
           create: (_) => AppState(),
         ),
         ChangeNotifierProvider(
-          create: (_) => HomeViewModel(),
+          create: (_) => HomeViewModel()..initialize(),
         ),
         ChangeNotifierProvider(
           create: (_) => ChatViewModel(),

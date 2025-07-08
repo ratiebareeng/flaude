@@ -11,17 +11,11 @@ class HomeScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
- // TODO: remove ChangeNotifierProvider declarations
- // already done in main.dart
-    return ChangeNotifierProvider(
-      create: (_) => HomeViewModel()..initialize(),
-      child: const _HomeScreenContent(),
-    );
+    return const _HomeScreenContent();
   }
 }
 
-
-// Move to HomeScreen build above 
+// Move to HomeScreen build above
 class _HomeScreenContent extends StatelessWidget {
   const _HomeScreenContent();
 
