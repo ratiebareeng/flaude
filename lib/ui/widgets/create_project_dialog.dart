@@ -1,6 +1,8 @@
 import 'package:claude_chat_clone/data/repositories/project_repository.dart';
+import 'package:claude_chat_clone/data/services/services.dart';
 import 'package:claude_chat_clone/domain/models/project.dart';
 import 'package:claude_chat_clone/ui/viewmodels/app_state.dart';
+import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -14,6 +16,8 @@ class CreateProjectDialog extends StatefulWidget {
 class _CreateProjectDialogState extends State<CreateProjectDialog> {
   final _titleController = TextEditingController();
   final _descriptionController = TextEditingController();
+  final _projectRepository = ProjectRepository(
+      rtdbService: FirebaseRTDBService(database: FirebaseDatabase.instance));
 
   @override
   Widget build(BuildContext context) {
@@ -56,7 +60,7 @@ class _CreateProjectDialogState extends State<CreateProjectDialog> {
               return;
             }
 
-            bool result = await ProjectRepository.instance.createProject(
+            bool result = await _projectRepository.createProject(
               Project(
                 id: DateTime.now().millisecondsSinceEpoch.toString(),
                 name: _titleController.text.trim(),

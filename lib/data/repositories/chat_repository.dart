@@ -6,19 +6,16 @@ import 'package:claude_chat_clone/domain/models/models.dart';
 import 'package:firebase_core/firebase_core.dart';
 
 class ChatRepository {
-  static final ChatRepository _instance = ChatRepository._internal();
-
-  static ChatRepository get instance => _instance;
-
+  final FirebaseRTDBService _rtdbService;
   final String _chatsPath = 'chats';
   final String _messagesPath = 'messages';
 
   final List<Chat> _allChats = [];
   final List<Chat> _recentChats = [];
 
-  factory ChatRepository() => _instance;
-
-  ChatRepository._internal();
+  // Constructor requires FirebaseRTDBService instance
+  ChatRepository({required FirebaseRTDBService rtdbService})
+      : _rtdbService = rtdbService;
 
   void addChats(List<Chat> chats) {
     // Clear existing chats before adding new ones
@@ -33,13 +30,11 @@ class ChatRepository {
   Future<bool> addMessage(String chatId, Message message) async {
     try {
       final messagePath = '$_messagesPath/$chatId/${message.id}';
-      await FirebaseRTDBService.instance
-          .writeData(messagePath, message.toJson());
+      await _rtdbService.writeData(messagePath, message.toJson());
 
       // Update chat's last message and timestamp
       final chatPath = '$_chatsPath/$chatId';
-      final chatSnapshot =
-          await FirebaseRTDBService.instance.readPath(chatPath);
+      final chatSnapshot = await _rtdbService.readPath(chatPath);
 
       if (chatSnapshot.exists && chatSnapshot.value != null) {
         final chatData = Map<String, dynamic>.from(chatSnapshot.value as Map);
@@ -47,8 +42,7 @@ class ChatRepository {
 
         final updatedChat = chat.addMessage(message);
 
-        await FirebaseRTDBService.instance
-            .updateData(chatPath, updatedChat.toJson());
+        await _rtdbService.updateData(chatPath, updatedChat.toJson());
       }
 
       return true;
@@ -65,7 +59,7 @@ class ChatRepository {
   Future<bool> chatExists(String chatId) async {
     try {
       final path = '$_chatsPath/$chatId';
-      final snapshot = await FirebaseRTDBService.instance.readPath(path);
+      final snapshot = await _rtdbService.readPath(path);
       return snapshot.exists && snapshot.value != null;
     } on FirebaseException catch (e) {
       log('Firebase error checking if chat $chatId exists: ${e.message}');
@@ -80,8 +74,8 @@ class ChatRepository {
   Future<String?> createChat(Chat chat) async {
     try {
       final path = '$_chatsPath/${chat.id}';
-      var chatId = await FirebaseRTDBService.instance
-          .writeDataWithId(path, 'id', chat.toJson());
+      var chatId =
+          await _rtdbService.writeDataWithId(path, 'id', chat.toJson());
       return chatId;
     } on FirebaseException catch (e) {
       log('Firebase error creating chat ${chat.id}: ${e.message}');
@@ -97,11 +91,11 @@ class ChatRepository {
     try {
       // Delete chat metadata
       final chatPath = '$_chatsPath/$chatId';
-      await FirebaseRTDBService.instance.deleteData(chatPath);
+      await _rtdbService.deleteData(chatPath);
 
       // Delete all messages for this chat
       final messagesPath = '$_messagesPath/$chatId';
-      await FirebaseRTDBService.instance.deleteData(messagesPath);
+      await _rtdbService.deleteData(messagesPath);
 
       return true;
     } on FirebaseException catch (e) {
@@ -117,7 +111,7 @@ class ChatRepository {
   Future<bool> deleteMessage(String chatId, String messageId) async {
     try {
       final messagePath = '$_messagesPath/$chatId/$messageId';
-      await FirebaseRTDBService.instance.deleteData(messagePath);
+      await _rtdbService.deleteData(messagePath);
       return true;
     } on FirebaseException catch (e) {
       log('Firebase error deleting message $messageId from chat $chatId: ${e.message}');
@@ -131,7 +125,7 @@ class ChatRepository {
   /// Get chat count for a project
   Future<(bool, int)> getChatCountForProject(String projectId) async {
     try {
-      final snapshot = await FirebaseRTDBService.instance.readPath(_chatsPath);
+      final snapshot = await _rtdbService.readPath(_chatsPath);
 
       if (!snapshot.exists || snapshot.value == null) {
         return (true, 0);
@@ -157,7 +151,7 @@ class ChatRepository {
 
   /// Listen to all chats changes
   Stream<(bool, List<Chat>?)> listenToAllChats() {
-    return FirebaseRTDBService.instance.listenToPath(_chatsPath).map((event) {
+    return _rtdbService.listenToPath(_chatsPath).map((event) {
       try {
         if (!event.snapshot.exists || event.snapshot.value == null) {
           return (true, <Chat>[]);
@@ -190,7 +184,7 @@ class ChatRepository {
   /// Listen to a single chat changes
   Stream<(bool, Chat?)> listenToChat(String chatId) {
     final path = '$_chatsPath/$chatId';
-    return FirebaseRTDBService.instance.listenToPath(path).map((event) {
+    return _rtdbService.listenToPath(path).map((event) {
       try {
         if (!event.snapshot.exists || event.snapshot.value == null) {
           return (true, null);
@@ -212,7 +206,7 @@ class ChatRepository {
   /// Listen to messages for a specific chat
   Stream<(bool, List<Message>?)> listenToChatMessages(String chatId) {
     final path = '$_messagesPath/$chatId';
-    return FirebaseRTDBService.instance.listenToPath(path).map((event) {
+    return _rtdbService.listenToPath(path).map((event) {
       try {
         if (!event.snapshot.exists || event.snapshot.value == null) {
           return (true, <Message>[]);
@@ -240,7 +234,7 @@ class ChatRepository {
 
   /// Get chats for a specific project
   Stream<(bool, List<Chat>?)> listenToProjectChats(String projectId) {
-    return FirebaseRTDBService.instance.listenToPath(_chatsPath).map((event) {
+    return _rtdbService.listenToPath(_chatsPath).map((event) {
       try {
         if (!event.snapshot.exists || event.snapshot.value == null) {
           return (true, <Chat>[]);
@@ -277,7 +271,7 @@ class ChatRepository {
   /// Read all chats
   Future<(bool, List<Chat>?)> readAllChats() async {
     try {
-      final snapshot = await FirebaseRTDBService.instance.readPath(_chatsPath);
+      final snapshot = await _rtdbService.readPath(_chatsPath);
 
       if (!snapshot.exists || snapshot.value == null) {
         return (true, <Chat>[]);
@@ -309,7 +303,7 @@ class ChatRepository {
   Future<(bool, Chat?)> readChat(String chatId) async {
     try {
       final path = '$_chatsPath/$chatId';
-      final snapshot = await FirebaseRTDBService.instance.readPath(path);
+      final snapshot = await _rtdbService.readPath(path);
 
       if (!snapshot.exists || snapshot.value == null) {
         return (true, null);
@@ -330,7 +324,7 @@ class ChatRepository {
   Future<(bool, List<Message>?)> readChatMessages(String chatId) async {
     try {
       final path = '$_messagesPath/$chatId';
-      final snapshot = await FirebaseRTDBService.instance.readPath(path);
+      final snapshot = await _rtdbService.readPath(path);
 
       if (!snapshot.exists || snapshot.value == null) {
         return (true, <Message>[]);
@@ -359,7 +353,7 @@ class ChatRepository {
   Future<(bool, List<Chat>?)> readRecentChats(
       {bool? desc = true, int? limit = 10}) async {
     try {
-      final snapshot = await FirebaseRTDBService.instance.readPathWithFilter(
+      final snapshot = await _rtdbService.readPathWithFilter(
         path: _chatsPath,
         filterKey: 'updatedAt',
       );
@@ -391,7 +385,7 @@ class ChatRepository {
     try {
       final updatedChat = chat.copyWith(updatedAt: DateTime.now());
       final path = '$_chatsPath/${chat.id}';
-      await FirebaseRTDBService.instance.updateData(path, updatedChat.toJson());
+      await _rtdbService.updateData(path, updatedChat.toJson());
       return true;
     } on FirebaseException catch (e) {
       log('Firebase error updating chat ${chat.id}: ${e.message}');
@@ -406,8 +400,7 @@ class ChatRepository {
   Future<bool> updateMessage(String chatId, Message message) async {
     try {
       final messagePath = '$_messagesPath/$chatId/${message.id}';
-      await FirebaseRTDBService.instance
-          .updateData(messagePath, message.toJson());
+      await _rtdbService.updateData(messagePath, message.toJson());
       return true;
     } on FirebaseException catch (e) {
       log('Firebase error updating message ${message.id}: ${e.message}');

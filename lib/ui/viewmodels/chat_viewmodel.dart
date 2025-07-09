@@ -9,7 +9,7 @@ import 'package:flutter/material.dart';
 import 'package:uuid/uuid.dart';
 
 class ChatViewModel extends ChangeNotifier {
-  final ChatRepository _chatRepository = ChatRepository.instance;
+  late final ChatRepository _chatRepository;
   final ClaudeApiService _claudeApiService = ClaudeApiService();
   final Uuid _uuid = Uuid();
 

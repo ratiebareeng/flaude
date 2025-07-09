@@ -1,10 +1,19 @@
 import 'package:claude_chat_clone/data/repositories/project_repository.dart';
+import 'package:claude_chat_clone/data/services/firebase_rtdb_service.dart';
 import 'package:claude_chat_clone/domain/models/models.dart';
 import 'package:claude_chat_clone/ui/widgets/widgets.dart';
+import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter/material.dart';
 
-class ProjectsScreen extends StatelessWidget {
+class ProjectsScreen extends StatefulWidget {
   const ProjectsScreen({super.key});
+
+  @override
+  State<ProjectsScreen> createState() => _ProjectsScreenState();
+}
+
+class _ProjectsScreenState extends State<ProjectsScreen> {
+  late final ProjectRepository _projectRepository;
 
   @override
   Widget build(BuildContext context) {
@@ -98,7 +107,7 @@ class ProjectsScreen extends StatelessWidget {
           // Projects grid/list
           Expanded(
             child: StreamBuilder<(bool, List<Project>?)>(
-              stream: ProjectRepository.instance.listenToAllProjects(),
+              stream: _projectRepository.listenToAllProjects(),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return Center(child: CircularProgressIndicator());
@@ -142,6 +151,15 @@ class ProjectsScreen extends StatelessWidget {
     );
   }
 
+  @override
+  void initState() {
+    super.initState();
+    // Initialize the repository with required dependencies
+    final rtdbService =
+        FirebaseRTDBService(database: FirebaseDatabase.instance);
+    _projectRepository = ProjectRepository(rtdbService: rtdbService);
+  }
+
   Widget _buildProjectsList(BuildContext context, List<Project> projects) {
     final isTablet = MediaQuery.of(context).size.width >= 1000;
 
@@ -176,7 +194,9 @@ class ProjectsScreen extends StatelessWidget {
   void _showCreateProjectDialog(BuildContext context) {
     showDialog(
       context: context,
-      builder: (context) => CreateProjectDialog(),
+      builder: (context) => CreateProjectDialog(
+          // projectRepository: _projectRepository,
+          ),
     );
   }
 }

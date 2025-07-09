@@ -1,10 +1,12 @@
 import 'package:claude_chat_clone/data/repositories/chat_repository.dart';
+import 'package:claude_chat_clone/data/services/services.dart';
 import 'package:claude_chat_clone/domain/models/models.dart';
+import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter/foundation.dart';
 import 'package:uuid/uuid.dart';
 
 class HomeViewModel extends ChangeNotifier {
-  final ChatRepository _chatRepository = ChatRepository.instance;
+  late final ChatRepository _chatRepository;
   final Uuid _uuid = Uuid();
 
   // Private state
@@ -93,6 +95,11 @@ class HomeViewModel extends ChangeNotifier {
   Future<void> initialize() async {
     try {
       _isLoading = true;
+      // Initialize the repository with required dependencies
+      final rtdbService =
+          FirebaseRTDBService(database: FirebaseDatabase.instance);
+      _chatRepository = ChatRepository(rtdbService: rtdbService);
+
       _error = null;
       notifyListeners();
 

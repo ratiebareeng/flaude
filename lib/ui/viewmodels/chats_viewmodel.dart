@@ -2,13 +2,13 @@ import 'dart:async';
 import 'dart:developer';
 
 import 'package:claude_chat_clone/data/repositories/chat_repository.dart';
+import 'package:claude_chat_clone/data/services/firebase_rtdb_service.dart';
 import 'package:claude_chat_clone/data/services/global_keys.dart';
 import 'package:claude_chat_clone/domain/models/models.dart';
+import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter/material.dart';
 
 class ChatsViewModel extends ChangeNotifier {
-  final ChatRepository _chatRepository = ChatRepository.instance;
-
   // State variables
   List<Chat> _allChats = [];
   List<Chat> _filteredChats = [];
@@ -19,6 +19,7 @@ class ChatsViewModel extends ChangeNotifier {
   // Stream subscription for real-time updates
   StreamSubscription<(bool, List<Chat>?)>? _chatsSubscription;
 
+  late final ChatRepository _chatRepository;
   // Getters
   List<Chat> get allChats => List.unmodifiable(_allChats);
   String? get error => _error;
@@ -103,6 +104,10 @@ class ChatsViewModel extends ChangeNotifier {
   Future<void> initialize() async {
     try {
       _setLoading(true);
+      // Initialize the repository with required dependencies
+      final rtdbService =
+          FirebaseRTDBService(database: FirebaseDatabase.instance);
+      _chatRepository = ChatRepository(rtdbService: rtdbService);
       _clearError();
 
       // Start listening to real-time chat updates

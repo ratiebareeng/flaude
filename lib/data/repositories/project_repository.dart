@@ -7,21 +7,18 @@ import '../../domain/models/project.dart';
 import '../services/firebase_rtdb_service.dart';
 
 class ProjectRepository {
-  static final ProjectRepository _instance = ProjectRepository._internal();
-
-  static ProjectRepository get instance => _instance;
-
+  final FirebaseRTDBService _rtdbService;
   final String _projectsPath = 'projects';
 
-  factory ProjectRepository() => _instance;
-
-  ProjectRepository._internal();
+  // Constructor requires FirebaseRTDBService instance
+  ProjectRepository({required FirebaseRTDBService rtdbService})
+      : _rtdbService = rtdbService;
 
   /// Create a new project
   Future<bool> createProject(Project project) async {
     try {
       final path = '$_projectsPath/${project.id}';
-      await FirebaseRTDBService.instance.writeData(path, project.toJson());
+      await _rtdbService.writeData(path, project.toJson());
       return true;
     } on FirebaseException catch (e) {
       log('Firebase error creating project ${project.id}: ${e.message}');
@@ -36,7 +33,7 @@ class ProjectRepository {
   Future<bool> deleteProject(String projectId) async {
     try {
       final path = '$_projectsPath/$projectId';
-      await FirebaseRTDBService.instance.deleteData(path);
+      await _rtdbService.deleteData(path);
       return true;
     } on FirebaseException catch (e) {
       log('Firebase error deleting project $projectId: ${e.message}');
@@ -49,9 +46,7 @@ class ProjectRepository {
 
   /// Listen to all projects changes
   Stream<(bool, List<Project>?)> listenToAllProjects() {
-    return FirebaseRTDBService.instance
-        .listenToPath(_projectsPath)
-        .map((event) {
+    return _rtdbService.listenToPath(_projectsPath).map((event) {
       try {
         if (!event.snapshot.exists || event.snapshot.value == null) {
           return (true, <Project>[]);
@@ -76,7 +71,7 @@ class ProjectRepository {
   /// Listen to a single project changes
   Stream<(bool, Project?)> listenToProject(String projectId) {
     final path = '$_projectsPath/$projectId';
-    return FirebaseRTDBService.instance.listenToPath(path).map((event) {
+    return _rtdbService.listenToPath(path).map((event) {
       try {
         if (!event.snapshot.exists || event.snapshot.value == null) {
           return (true, null);
@@ -98,8 +93,7 @@ class ProjectRepository {
   /// Read all projects
   Future<(bool, List<Project>?)> readAllProjects() async {
     try {
-      final snapshot =
-          await FirebaseRTDBService.instance.readPath(_projectsPath);
+      final snapshot = await _rtdbService.readPath(_projectsPath);
 
       if (!snapshot.exists || snapshot.value == null) {
         return (true, <Project>[]);
@@ -124,7 +118,7 @@ class ProjectRepository {
   Future<(bool, Project?)> readProject(String projectId) async {
     try {
       final path = '$_projectsPath/$projectId';
-      final snapshot = await FirebaseRTDBService.instance.readPath(path);
+      final snapshot = await _rtdbService.readPath(path);
 
       if (!snapshot.exists && snapshot.value == null) {
         return (true, null);
@@ -146,8 +140,7 @@ class ProjectRepository {
     try {
       final updatedProject = project.copyWith(updatedAt: DateTime.now());
       final path = '$_projectsPath/${project.id}';
-      await FirebaseRTDBService.instance
-          .updateData(path, updatedProject.toJson());
+      await _rtdbService.updateData(path, updatedProject.toJson());
       return true;
     } on FirebaseException catch (e) {
       log('Firebase error updating project ${project.id}: ${e.message}');
