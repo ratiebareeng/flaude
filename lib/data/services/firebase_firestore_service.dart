@@ -2,9 +2,11 @@ import 'package:claude_chat_clone/plugins/error_manager/error_manager.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class FirebaseFirestoreService {
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final FirebaseFirestore _firestore;
 
-  FirebaseFirestoreService();
+  // Updated constructor to accept FirebaseFirestore instance
+  FirebaseFirestoreService({FirebaseFirestore? firestore})
+      : _firestore = firestore ?? FirebaseFirestore.instance;
 
   /// Delete a document.
   Future<bool> deleteDocument({
@@ -171,7 +173,7 @@ class FirebaseFirestoreService {
       String generatedId = docRef.id;
 
       data['id'] = generatedId; // Add the generated ID to the data
-      docRef.set(data);
+      await docRef.set(data); // Added await here
       return true;
     } catch (e) {
       ErrorManager.logError(
