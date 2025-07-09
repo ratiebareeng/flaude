@@ -1,5 +1,4 @@
 import 'package:claude_chat_clone/data/services/firebase_firestore_service.dart';
-import 'package:claude_chat_clone/plugins/error_manager/error_manager.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/annotations.dart';
@@ -13,7 +12,6 @@ import 'package:mockito/mockito.dart';
   DocumentSnapshot,
   QuerySnapshot,
   Query,
-  ErrorManager,
 ])
 import 'firebase_firestore_service_test.mocks.dart';
 
@@ -43,37 +41,34 @@ void main() {
     });
 
     group('deleteDocument', () {
-      test('should return true when document is deleted successfully',
-          () async {
+      test('should delete document successfully', () async {
         // Arrange
         when(mockDocument.delete()).thenAnswer((_) async => {});
 
-        // Act
-        final result = await service.deleteDocument(
+        // Act & Assert - No exception means success
+        await service.deleteDocument(
           collectionPath: 'users',
           docId: 'user123',
         );
 
-        // Assert
-        expect(result, true);
         verify(mockFirestore.collection('users')).called(1);
         verify(mockCollection.doc('user123')).called(1);
         verify(mockDocument.delete()).called(1);
       });
 
-      test('should return false and log error when deletion fails', () async {
+      test('should throw exception when deletion fails', () async {
         // Arrange
-        when(mockDocument.delete()).thenThrow(Exception('Delete failed'));
+        final exception = Exception('Delete failed');
+        when(mockDocument.delete()).thenThrow(exception);
 
-        // Act
-        final result = await service.deleteDocument(
-          collectionPath: 'users',
-          docId: 'user123',
+        // Act & Assert
+        expect(
+          () => service.deleteDocument(
+            collectionPath: 'users',
+            docId: 'user123',
+          ),
+          throwsA(exception),
         );
-
-        // Assert
-        expect(result, false);
-        verify(mockDocument.delete()).called(1);
       });
     });
 
@@ -99,21 +94,21 @@ void main() {
         verify(mockQuery.get()).called(1);
       });
 
-      test('should return empty list and log error when filtering fails',
-          () async {
+      test('should throw exception when filtering fails', () async {
         // Arrange
+        final exception = Exception('Filter failed');
         when(mockCollection.where(any, isEqualTo: anyNamed('isEqualTo')))
-            .thenThrow(Exception('Filter failed'));
+            .thenThrow(exception);
 
-        // Act
-        final result = await service.filterDocuments(
-          collectionPath: 'users',
-          field: 'status',
-          isEqualTo: 'active',
+        // Act & Assert
+        expect(
+          () => service.filterDocuments(
+            collectionPath: 'users',
+            field: 'status',
+            isEqualTo: 'active',
+          ),
+          throwsA(exception),
         );
-
-        // Assert
-        expect(result, isEmpty);
       });
     });
 
@@ -191,16 +186,16 @@ void main() {
         verify(mockCollection.get()).called(1);
       });
 
-      test('should return empty list and log error when reading fails',
-          () async {
+      test('should throw exception when reading fails', () async {
         // Arrange
-        when(mockCollection.get()).thenThrow(Exception('Read failed'));
+        final exception = Exception('Read failed');
+        when(mockCollection.get()).thenThrow(exception);
 
-        // Act
-        final result = await service.readCollection(collectionPath: 'users');
-
-        // Assert
-        expect(result, isEmpty);
+        // Act & Assert
+        expect(
+          () => service.readCollection(collectionPath: 'users'),
+          throwsA(exception),
+        );
       });
     });
 
@@ -220,95 +215,92 @@ void main() {
         verify(mockDocument.get()).called(1);
       });
 
-      test('should return null and log error when reading fails', () async {
+      test('should throw exception when reading fails', () async {
         // Arrange
-        when(mockDocument.get()).thenThrow(Exception('Read failed'));
+        final exception = Exception('Read failed');
+        when(mockDocument.get()).thenThrow(exception);
 
-        // Act
-        final result = await service.readDocument(
-          collectionPath: 'users',
-          docId: 'user123',
+        // Act & Assert
+        expect(
+          () => service.readDocument(
+            collectionPath: 'users',
+            docId: 'user123',
+          ),
+          throwsA(exception),
         );
-
-        // Assert
-        expect(result, null);
       });
     });
 
     group('updateDocument', () {
-      test('should return true when document is updated successfully',
-          () async {
+      test('should update document successfully', () async {
         // Arrange
         final data = {'name': 'John Doe', 'age': 30};
         when(mockDocument.update(any)).thenAnswer((_) async => {});
 
-        // Act
-        final result = await service.updateDocument(
+        // Act & Assert - No exception means success
+        await service.updateDocument(
           collectionPath: 'users',
           docId: 'user123',
           data: data,
         );
 
-        // Assert
-        expect(result, true);
         verify(mockDocument.update(data)).called(1);
       });
 
-      test('should return false and log error when update fails', () async {
+      test('should throw exception when update fails', () async {
         // Arrange
         final data = {'name': 'John Doe', 'age': 30};
-        when(mockDocument.update(any)).thenThrow(Exception('Update failed'));
+        final exception = Exception('Update failed');
+        when(mockDocument.update(any)).thenThrow(exception);
 
-        // Act
-        final result = await service.updateDocument(
-          collectionPath: 'users',
-          docId: 'user123',
-          data: data,
+        // Act & Assert
+        expect(
+          () => service.updateDocument(
+            collectionPath: 'users',
+            docId: 'user123',
+            data: data,
+          ),
+          throwsA(exception),
         );
-
-        // Assert
-        expect(result, false);
       });
     });
 
     group('writeDocument', () {
-      test('should return true when document is written successfully',
-          () async {
+      test('should write document successfully', () async {
         // Arrange
         final data = {'name': 'John Doe', 'age': 30};
         when(mockDocument.set(any)).thenAnswer((_) async => {});
 
-        // Act
-        final result = await service.writeDocument(
+        // Act & Assert - No exception means success
+        await service.writeDocument(
           collectionPath: 'users',
           docId: 'user123',
           data: data,
         );
 
-        // Assert
-        expect(result, true);
         verify(mockDocument.set(data)).called(1);
       });
 
-      test('should return false and log error when write fails', () async {
+      test('should throw exception when write fails', () async {
         // Arrange
         final data = {'name': 'John Doe', 'age': 30};
-        when(mockDocument.set(any)).thenThrow(Exception('Write failed'));
+        final exception = Exception('Write failed');
+        when(mockDocument.set(any)).thenThrow(exception);
 
-        // Act
-        final result = await service.writeDocument(
-          collectionPath: 'users',
-          docId: 'user123',
-          data: data,
+        // Act & Assert
+        expect(
+          () => service.writeDocument(
+            collectionPath: 'users',
+            docId: 'user123',
+            data: data,
+          ),
+          throwsA(exception),
         );
-
-        // Assert
-        expect(result, false);
       });
     });
 
-    group('writeDocumentCreatePath', () {
-      test('should return true when document is written with generated ID',
+    group('createDocument', () {
+      test('should create document with auto-generated ID and return ID',
           () async {
         // Arrange
         final data = {'name': 'John Doe', 'age': 30};
@@ -319,33 +311,31 @@ void main() {
         when(mockDocument.set(any)).thenAnswer((_) async => {});
 
         // Act
-        final result = await service.writeDocumentCreatePath(
+        final result = await service.createDocument(
           collectionPath: 'users',
           data: data,
         );
 
         // Assert
-        expect(result, true);
-        expect(data['id'], generatedId);
+        expect(result, generatedId);
         verify(mockCollection.doc()).called(1);
-        verify(mockDocument.set(data)).called(1);
+        verify(mockDocument.set({...data, 'id': generatedId})).called(1);
       });
 
-      test(
-          'should return false and log error when write with generated ID fails',
-          () async {
+      test('should throw exception when create fails', () async {
         // Arrange
         final data = {'name': 'John Doe', 'age': 30};
-        when(mockCollection.doc()).thenThrow(Exception('Create path failed'));
+        final exception = Exception('Create failed');
+        when(mockCollection.doc()).thenThrow(exception);
 
-        // Act
-        final result = await service.writeDocumentCreatePath(
-          collectionPath: 'users',
-          data: data,
+        // Act & Assert
+        expect(
+          () => service.createDocument(
+            collectionPath: 'users',
+            data: data,
+          ),
+          throwsA(exception),
         );
-
-        // Assert
-        expect(result, false);
       });
     });
 
