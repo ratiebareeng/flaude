@@ -4,9 +4,9 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 class FirebaseFirestoreService {
   final FirebaseFirestore _firestore;
 
-  // Updated constructor to accept FirebaseFirestore instance
-  FirebaseFirestoreService({FirebaseFirestore? firestore})
-      : _firestore = firestore ?? FirebaseFirestore.instance;
+  // Constructor requires FirebaseFirestore instance
+  FirebaseFirestoreService({required FirebaseFirestore firestore})
+      : _firestore = firestore;
 
   /// Delete a document.
   Future<bool> deleteDocument({
