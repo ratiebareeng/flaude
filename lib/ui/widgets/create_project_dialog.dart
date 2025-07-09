@@ -1,5 +1,4 @@
-// widgets/create_project_dialog.dart
-import 'package:claude_chat_clone/data/services/project_service.dart';
+import 'package:claude_chat_clone/data/repositories/project_repository.dart';
 import 'package:claude_chat_clone/domain/models/project.dart';
 import 'package:claude_chat_clone/ui/viewmodels/app_state.dart';
 import 'package:flutter/material.dart';
@@ -57,7 +56,7 @@ class _CreateProjectDialogState extends State<CreateProjectDialog> {
               return;
             }
 
-            bool result = await ProjectService.instance.createProject(
+            bool result = await ProjectRepository.instance.createProject(
               Project(
                 id: DateTime.now().millisecondsSinceEpoch.toString(),
                 name: _titleController.text.trim(),
