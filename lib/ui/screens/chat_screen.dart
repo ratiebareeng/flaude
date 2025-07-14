@@ -1,7 +1,7 @@
 import 'package:claude_chat_clone/domain/models/ai_models_list.dart';
-import 'package:claude_chat_clone/domain/models/models.dart';
 import 'package:claude_chat_clone/ui/viewmodels/chat_viewmodel.dart';
 import 'package:claude_chat_clone/ui/widgets/atoms/ai_model_dropdown_menu.dart';
+import 'package:claude_chat_clone/ui/widgets/molecules/message_bubble.dart';
 import 'package:claude_chat_clone/ui/widgets/molecules/new_chat_card.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -106,77 +106,6 @@ class _ChatScreenState extends State<ChatScreen> {
     super.initState();
     _viewModel = Provider.of<ChatViewModel>(context, listen: false);
     _initializeChat();
-  }
-
-  Widget _buildArtifactPreview(Map<String, dynamic> artifact) {
-    return Container(
-      margin: const EdgeInsets.only(top: 12),
-      decoration: BoxDecoration(
-        color: const Color(0xFF2F2F2F),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey[700]!),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              border: Border(
-                bottom: BorderSide(color: Colors.grey[700]!),
-              ),
-            ),
-            child: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(6),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF4A4A4A),
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: const Icon(Icons.code, color: Colors.white, size: 16),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    artifact['title'] ?? 'Artifact',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-                TextButton.icon(
-                  onPressed: () => _viewArtifact(artifact),
-                  icon: const Icon(Icons.open_in_new, size: 16),
-                  label: const Text('View'),
-                  style: TextButton.styleFrom(
-                    foregroundColor: const Color(0xFFCD7F32),
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Container(
-            padding: const EdgeInsets.all(16),
-            child: Text(
-              artifact['content']?.substring(0, 100) ?? 'No preview available',
-              style: const TextStyle(
-                color: Colors.grey,
-                fontSize: 14,
-                fontFamily: 'Consolas',
-                height: 1.4,
-              ),
-              maxLines: 3,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-        ],
-      ),
-    );
   }
 
   Widget _buildInputArea(ChatViewModel viewModel) {
@@ -340,96 +269,6 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
-  Widget _buildMessageBubble(Message message, ChatViewModel viewModel) {
-    return Container(
-      constraints: const BoxConstraints(maxWidth: 800),
-      margin: const EdgeInsets.symmetric(vertical: 8),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (!message.isUser) ...[
-            Container(
-              width: 32,
-              height: 32,
-              decoration: BoxDecoration(
-                color: const Color(0xFFCD7F32),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: const Center(
-                child: Text(
-                  'C',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(width: 12),
-          ],
-          Expanded(
-            child: Column(
-              crossAxisAlignment: message.isUser
-                  ? CrossAxisAlignment.end
-                  : CrossAxisAlignment.start,
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: message.isUser
-                        ? const Color(0xFF3A3A3A)
-                        : const Color(0xFF2F2F2F),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        message.content,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 16,
-                          height: 1.5,
-                        ),
-                      ),
-                      if (message.hasArtifact! && message.artifact != null)
-                        _buildArtifactPreview(message.artifact!),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  viewModel.formatTimestamp(message.timestamp),
-                  style: TextStyle(
-                    color: Colors.grey[500],
-                    fontSize: 12,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          if (message.isUser) ...[
-            const SizedBox(width: 12),
-            Container(
-              width: 32,
-              height: 32,
-              decoration: BoxDecoration(
-                color: Colors.grey[600],
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: const Icon(
-                Icons.person,
-                color: Colors.white,
-                size: 18,
-              ),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-
   Widget _buildMessagesList(ChatViewModel viewModel) {
     return ListView.builder(
       controller: _scrollController,
@@ -439,7 +278,10 @@ class _ChatScreenState extends State<ChatScreen> {
         if (index == viewModel.messages.length) {
           return _buildLoadingIndicator();
         }
-        return _buildMessageBubble(viewModel.messages[index], viewModel);
+        return MessageBubble(
+          message: viewModel.messages[index],
+          viewArtifact: widget.onArtifactView,
+        );
       },
     );
   }
@@ -457,11 +299,5 @@ class _ChatScreenState extends State<ChatScreen> {
     _messageController.clear();
 
     await _viewModel.sendMessage(message);
-  }
-
-  void _viewArtifact(Map<String, dynamic> artifact) {
-    if (widget.onArtifactView != null) {
-      widget.onArtifactView!(artifact);
-    }
   }
 }
