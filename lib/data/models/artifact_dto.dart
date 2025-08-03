@@ -1,6 +1,4 @@
-// lib/data/models/artifact_dto.dart
 /// Data Transfer Object for Artifacts - handles various artifact types
-
 class ArtifactDTO {
   final String id;
   final String title;
@@ -26,53 +24,6 @@ class ArtifactDTO {
     this.messageId,
   });
 
-  /// Create ArtifactDTO from Firebase JSON
-  factory ArtifactDTO.fromFirebaseJson(Map<String, dynamic> json) {
-    return ArtifactDTO(
-      id: json['id'] as String,
-      title: json['title'] as String,
-      type: json['type'] as String,
-      content: json['content'] as String,
-      language: json['language'] as String?,
-      metadata: json['metadata'] as Map<String, dynamic>?,
-      createdAt: json['createdAt'] as int,
-      updatedAt: json['updatedAt'] as int?,
-      projectId: json['projectId'] as String?,
-      messageId: json['messageId'] as String?,
-    );
-  }
-
-  /// Convert to Firebase JSON
-  Map<String, dynamic> toFirebaseJson() {
-    final json = <String, dynamic>{
-      'id': id,
-      'title': title,
-      'type': type,
-      'content': content,
-      'createdAt': createdAt,
-    };
-
-    if (language != null) json['language'] = language;
-    if (metadata != null) json['metadata'] = metadata;
-    if (updatedAt != null) json['updatedAt'] = updatedAt;
-    if (projectId != null) json['projectId'] = projectId;
-    if (messageId != null) json['messageId'] = messageId;
-
-    return json;
-  }
-
-  /// Convert to Map for message artifact
-  Map<String, dynamic> toArtifactMap() {
-    return {
-      'id': id,
-      'title': title,
-      'type': type,
-      'content': content,
-      'language': language,
-      'metadata': metadata,
-    };
-  }
-
   /// Create from message artifact map
   factory ArtifactDTO.fromArtifactMap({
     required Map<String, dynamic> artifactMap,
@@ -90,6 +41,31 @@ class ArtifactDTO {
       projectId: projectId,
       messageId: messageId,
     );
+  }
+
+  /// Create ArtifactDTO from Firebase JSON
+  factory ArtifactDTO.fromFirebaseJson(Map<String, dynamic> json) {
+    return ArtifactDTO(
+      id: json['id'] as String,
+      title: json['title'] as String,
+      type: json['type'] as String,
+      content: json['content'] as String,
+      language: json['language'] as String?,
+      metadata: json['metadata'] as Map<String, dynamic>?,
+      createdAt: json['createdAt'] as int,
+      updatedAt: json['updatedAt'] as int?,
+      projectId: json['projectId'] as String?,
+      messageId: json['messageId'] as String?,
+    );
+  }
+
+  @override
+  int get hashCode => id.hashCode;
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    return other is ArtifactDTO && other.id == id;
   }
 
   /// Create a copy with updated fields
@@ -119,17 +95,39 @@ class ArtifactDTO {
     );
   }
 
+  /// Convert to Map for message artifact
+  Map<String, dynamic> toArtifactMap() {
+    return {
+      'id': id,
+      'title': title,
+      'type': type,
+      'content': content,
+      'language': language,
+      'metadata': metadata,
+    };
+  }
+
+  /// Convert to Firebase JSON
+  Map<String, dynamic> toFirebaseJson() {
+    final json = <String, dynamic>{
+      'id': id,
+      'title': title,
+      'type': type,
+      'content': content,
+      'createdAt': createdAt,
+    };
+
+    if (language != null) json['language'] = language;
+    if (metadata != null) json['metadata'] = metadata;
+    if (updatedAt != null) json['updatedAt'] = updatedAt;
+    if (projectId != null) json['projectId'] = projectId;
+    if (messageId != null) json['messageId'] = messageId;
+
+    return json;
+  }
+
   @override
   String toString() {
     return 'ArtifactDTO{id: $id, title: $title, type: $type}';
   }
-
-  @override
-  bool operator ==(Object other) {
-    if (identical(this, other)) return true;
-    return other is ArtifactDTO && other.id == id;
-  }
-
-  @override
-  int get hashCode => id.hashCode;
 }

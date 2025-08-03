@@ -1,5 +1,4 @@
-// lib/data/models/project_dto.dart
-import '../../domain/models/models.dart';
+import 'package:claude_chat_clone/domain/models/project.dart';
 
 /// Data Transfer Object for Project - handles Firebase RTDB serialization
 class ProjectDTO {
@@ -23,20 +22,6 @@ class ProjectDTO {
     this.metadata,
   });
 
-  /// Create ProjectDTO from Firebase JSON
-  factory ProjectDTO.fromFirebaseJson(Map<String, dynamic> json) {
-    return ProjectDTO(
-      id: json['id'] as String? ?? '',
-      name: json['name'] as String? ?? '',
-      description: json['description'] as String? ?? '',
-      createdAt: json['createdAt'] as int? ?? DateTime.now().millisecondsSinceEpoch,
-      updatedAt: json['updatedAt'] as int? ?? DateTime.now().millisecondsSinceEpoch,
-      settings: json['settings'] as Map<String, dynamic>?,
-      tags: (json['tags'] as List?)?.cast<String>(),
-      metadata: json['metadata'] as Map<String, dynamic>?,
-    );
-  }
-
   /// Create ProjectDTO from domain Project model
   factory ProjectDTO.fromDomain(Project project) {
     return ProjectDTO(
@@ -45,6 +30,54 @@ class ProjectDTO {
       description: project.description,
       createdAt: project.createdAt.millisecondsSinceEpoch,
       updatedAt: project.updatedAt.millisecondsSinceEpoch,
+    );
+  }
+
+  /// Create ProjectDTO from Firebase JSON
+  factory ProjectDTO.fromFirebaseJson(Map<String, dynamic> json) {
+    return ProjectDTO(
+      id: json['id'] as String? ?? '',
+      name: json['name'] as String? ?? '',
+      description: json['description'] as String? ?? '',
+      createdAt:
+          json['createdAt'] as int? ?? DateTime.now().millisecondsSinceEpoch,
+      updatedAt:
+          json['updatedAt'] as int? ?? DateTime.now().millisecondsSinceEpoch,
+      settings: json['settings'] as Map<String, dynamic>?,
+      tags: (json['tags'] as List?)?.cast<String>(),
+      metadata: json['metadata'] as Map<String, dynamic>?,
+    );
+  }
+
+  @override
+  int get hashCode => id.hashCode;
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    return other is ProjectDTO && other.id == id;
+  }
+
+  /// Create a copy with updated fields
+  ProjectDTO copyWith({
+    String? id,
+    String? name,
+    String? description,
+    int? createdAt,
+    int? updatedAt,
+    Map<String, dynamic>? settings,
+    List<String>? tags,
+    Map<String, dynamic>? metadata,
+  }) {
+    return ProjectDTO(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      description: description ?? this.description,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      settings: settings ?? this.settings,
+      tags: tags ?? this.tags,
+      metadata: metadata ?? this.metadata,
     );
   }
 
@@ -76,40 +109,8 @@ class ProjectDTO {
     return json;
   }
 
-  /// Create a copy with updated fields
-  ProjectDTO copyWith({
-    String? id,
-    String? name,
-    String? description,
-    int? createdAt,
-    int? updatedAt,
-    Map<String, dynamic>? settings,
-    List<String>? tags,
-    Map<String, dynamic>? metadata,
-  }) {
-    return ProjectDTO(
-      id: id ?? this.id,
-      name: name ?? this.name,
-      description: description ?? this.description,
-      createdAt: createdAt ?? this.createdAt,
-      updatedAt: updatedAt ?? this.updatedAt,
-      settings: settings ?? this.settings,
-      tags: tags ?? this.tags,
-      metadata: metadata ?? this.metadata,
-    );
-  }
-
   @override
   String toString() {
     return 'ProjectDTO{id: $id, name: $name}';
   }
-
-  @override
-  bool operator ==(Object other) {
-    if (identical(this, other)) return true;
-    return other is ProjectDTO && other.id == id;
-  }
-
-  @override
-  int get hashCode => id.hashCode;
 }

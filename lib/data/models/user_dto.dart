@@ -1,5 +1,5 @@
-// lib/data/models/user_dto.dart
 /// Data Transfer Object for User - handles Firebase Auth and user data
+library;
 
 class UserDTO {
   final String id;
@@ -42,23 +42,13 @@ class UserDTO {
     );
   }
 
-  /// Convert to Firebase JSON
-  Map<String, dynamic> toFirebaseJson() {
-    final json = <String, dynamic>{
-      'id': id,
-    };
+  @override
+  int get hashCode => id.hashCode;
 
-    if (email != null) json['email'] = email;
-    if (displayName != null) json['displayName'] = displayName;
-    if (photoUrl != null) json['photoUrl'] = photoUrl;
-    if (apiKey != null) json['apiKey'] = apiKey;
-    if (defaultModel != null) json['defaultModel'] = defaultModel;
-    if (preferences != null) json['preferences'] = preferences;
-    if (settings != null) json['settings'] = settings;
-    if (createdAt != null) json['createdAt'] = createdAt;
-    if (lastLoginAt != null) json['lastLoginAt'] = lastLoginAt;
-
-    return json;
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    return other is UserDTO && other.id == id;
   }
 
   /// Create a copy with updated fields
@@ -88,17 +78,27 @@ class UserDTO {
     );
   }
 
+  /// Convert to Firebase JSON
+  Map<String, dynamic> toFirebaseJson() {
+    final json = <String, dynamic>{
+      'id': id,
+    };
+
+    if (email != null) json['email'] = email;
+    if (displayName != null) json['displayName'] = displayName;
+    if (photoUrl != null) json['photoUrl'] = photoUrl;
+    if (apiKey != null) json['apiKey'] = apiKey;
+    if (defaultModel != null) json['defaultModel'] = defaultModel;
+    if (preferences != null) json['preferences'] = preferences;
+    if (settings != null) json['settings'] = settings;
+    if (createdAt != null) json['createdAt'] = createdAt;
+    if (lastLoginAt != null) json['lastLoginAt'] = lastLoginAt;
+
+    return json;
+  }
+
   @override
   String toString() {
     return 'UserDTO{id: $id, email: $email, displayName: $displayName}';
   }
-
-  @override
-  bool operator ==(Object other) {
-    if (identical(this, other)) return true;
-    return other is UserDTO && other.id == id;
-  }
-
-  @override
-  int get hashCode => id.hashCode;
 }

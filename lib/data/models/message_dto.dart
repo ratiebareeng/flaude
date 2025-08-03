@@ -1,5 +1,4 @@
-// lib/data/models/message_dto.dart
-import '../../domain/models/models.dart';
+import 'package:claude_chat_clone/domain/models/message.dart';
 
 /// Data Transfer Object for Message - handles Firebase RTDB and API serialization
 class MessageDTO {
@@ -25,18 +24,27 @@ class MessageDTO {
     this.metadata,
   });
 
-  /// Create MessageDTO from Firebase JSON
-  factory MessageDTO.fromFirebaseJson(Map<String, dynamic> json) {
+  /// Create from Claude API response
+  factory MessageDTO.fromClaudeApiResponse({
+    required String id,
+    required String chatId,
+    required Map<String, dynamic> response,
+  }) {
+    final content = response['content'] is List
+        ? (response['content'] as List).first['text'] as String
+        : response['content'] as String? ?? '';
+
     return MessageDTO(
-      id: json['id'] as String? ?? '',
-      chatId: json['chatId'] as String? ?? '',
-      content: json['content'] as String? ?? '',
-      isUser: json['isUser'] as bool? ?? false,
-      timestamp: _parseTimestamp(json['timestamp']),
-      attachments: (json['attachments'] as List?)?.cast<String>(),
-      hasArtifact: json['hasArtifact'] as bool?,
-      artifact: json['artifact'] as Map<String, dynamic>?,
-      metadata: json['metadata'] as Map<String, dynamic>?,
+      id: id,
+      chatId: chatId,
+      content: content,
+      isUser: false,
+      timestamp: DateTime.now().millisecondsSinceEpoch,
+      metadata: {
+        'usage': response['usage'],
+        'model': response['model'],
+        'stop_reason': response['stop_reason'],
+      },
     );
   }
 
@@ -52,6 +60,38 @@ class MessageDTO {
       hasArtifact: message.hasArtifact,
       artifact: message.artifact,
     );
+  }
+
+  /// Create MessageDTO from Firebase JSON
+  factory MessageDTO.fromFirebaseJson(Map<String, dynamic> json) {
+    return MessageDTO(
+      id: json['id'] as String? ?? '',
+      chatId: json['chatId'] as String? ?? '',
+      content: json['content'] as String? ?? '',
+      isUser: json['isUser'] as bool? ?? false,
+      timestamp: _parseTimestamp(json['timestamp']),
+      attachments: (json['attachments'] as List?)?.cast<String>(),
+      hasArtifact: json['hasArtifact'] as bool?,
+      artifact: json['artifact'] as Map<String, dynamic>?,
+      metadata: json['metadata'] as Map<String, dynamic>?,
+    );
+  }
+
+  @override
+  int get hashCode => id.hashCode;
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    return other is MessageDTO && other.id == id;
+  }
+
+  /// Convert to Claude API format
+  Map<String, dynamic> toClaudeApiJson() {
+    return {
+      'role': isUser ? 'user' : 'assistant',
+      'content': content,
+    };
   }
 
   /// Convert to domain Message model
@@ -86,36 +126,9 @@ class MessageDTO {
     return json;
   }
 
-  /// Convert to Claude API format
-  Map<String, dynamic> toClaudeApiJson() {
-    return {
-      'role': isUser ? 'user' : 'assistant',
-      'content': content,
-    };
-  }
-
-  /// Create from Claude API response
-  factory MessageDTO.fromClaudeApiResponse({
-    required String id,
-    required String chatId,
-    required Map<String, dynamic> response,
-  }) {
-    final content = response['content'] is List 
-        ? (response['content'] as List).first['text'] as String
-        : response['content'] as String? ?? '';
-        
-    return MessageDTO(
-      id: id,
-      chatId: chatId,
-      content: content,
-      isUser: false,
-      timestamp: DateTime.now().millisecondsSinceEpoch,
-      metadata: {
-        'usage': response['usage'],
-        'model': response['model'],
-        'stop_reason': response['stop_reason'],
-      },
-    );
+  @override
+  String toString() {
+    return 'MessageDTO{id: $id, chatId: $chatId, isUser: $isUser}';
   }
 
   static int _parseTimestamp(dynamic value) {
@@ -123,22 +136,9 @@ class MessageDTO {
     if (value is int) return value;
     if (value is String) {
       final parsed = DateTime.tryParse(value);
-      return parsed?.millisecondsSinceEpoch ?? DateTime.now().millisecondsSinceEpoch;
+      return parsed?.millisecondsSinceEpoch ??
+          DateTime.now().millisecondsSinceEpoch;
     }
     return DateTime.now().millisecondsSinceEpoch;
   }
-
-  @override
-  String toString() {
-    return 'MessageDTO{id: $id, chatId: $chatId, isUser: $isUser}';
-  }
-
-  @override
-  bool operator ==(Object other) {
-    if (identical(this, other)) return true;
-    return other is MessageDTO && other.id == id;
-  }
-
-  @override
-  int get hashCode => id.hashCode;
 }

@@ -1,6 +1,30 @@
-// lib/data/models/claude_api_dto.dart
-/// Data Transfer Objects for Claude API communication
+/// Claude API Error DTO
+class ClaudeApiErrorDTO {
+  final String type;
+  final String message;
+  final Map<String, dynamic>? details;
 
+  const ClaudeApiErrorDTO({
+    required this.type,
+    required this.message,
+    this.details,
+  });
+
+  factory ClaudeApiErrorDTO.fromJson(Map<String, dynamic> json) {
+    return ClaudeApiErrorDTO(
+      type: json['type'] as String,
+      message: json['message'] as String,
+      details: json['details'] as Map<String, dynamic>?,
+    );
+  }
+
+  @override
+  String toString() {
+    return 'ClaudeApiErrorDTO{type: $type, message: $message}';
+  }
+}
+
+/// Data Transfer Objects for Claude API communication
 /// Claude API Request DTO
 class ClaudeApiRequestDTO {
   final String model;
@@ -143,31 +167,5 @@ class ClaudeUsageDTO {
   @override
   String toString() {
     return 'ClaudeUsageDTO{inputTokens: $inputTokens, outputTokens: $outputTokens}';
-  }
-}
-
-/// Claude API Error DTO
-class ClaudeApiErrorDTO {
-  final String type;
-  final String message;
-  final Map<String, dynamic>? details;
-
-  const ClaudeApiErrorDTO({
-    required this.type,
-    required this.message,
-    this.details,
-  });
-
-  factory ClaudeApiErrorDTO.fromJson(Map<String, dynamic> json) {
-    return ClaudeApiErrorDTO(
-      type: json['type'] as String,
-      message: json['message'] as String,
-      details: json['details'] as Map<String, dynamic>?,
-    );
-  }
-
-  @override
-  String toString() {
-    return 'ClaudeApiErrorDTO{type: $type, message: $message}';
   }
 }
