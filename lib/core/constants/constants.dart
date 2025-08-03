@@ -1,5 +1,3 @@
-// lib/core/constants/constants.dart
-
 /// Barrel file for all application constants
 ///
 /// This file exports all constant classes to provide a single import point

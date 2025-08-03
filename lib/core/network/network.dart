@@ -1,5 +1,3 @@
-// lib/core/network/network.dart
-
 /// Barrel file for network utilities and services
 ///
 /// This file exports all network-related classes and utilities

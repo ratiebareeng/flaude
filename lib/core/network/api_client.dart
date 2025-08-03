@@ -1,5 +1,3 @@
-// lib/core/network/api_client.dart
-
 import 'dart:async';
 import 'dart:convert';
 import 'dart:developer';
@@ -12,46 +10,45 @@ import 'package:http/http.dart' as http;
 /// HTTP client wrapper that provides common functionality for API requests
 class ApiClient {
   static final ApiClient _instance = ApiClient._internal();
-  factory ApiClient() => _instance;
-  ApiClient._internal();
-
   late http.Client _client;
   Map<String, String> _defaultHeaders = {};
 
-  /// Initialize the API client with default configuration
-  void initialize() {
-    _client = http.Client();
-    _setDefaultHeaders();
-  }
-
-  /// Set default headers for all requests
-  void _setDefaultHeaders() {
-    _defaultHeaders = {
-      ApiConstants.contentTypeHeader: ApiConstants.applicationJsonContentType,
-      'User-Agent': 'Flaude/1.0.0 (Flutter)',
-    };
-  }
-
-  /// Add or update a default header
-  void setDefaultHeader(String key, String value) {
-    _defaultHeaders[key] = value;
-  }
-
-  /// Remove a default header
-  void removeDefaultHeader(String key) {
-    _defaultHeaders.remove(key);
-  }
-
-  /// Configure Claude API headers
-  void configureClaudeHeaders(String apiKey) {
-    setDefaultHeader(ApiConstants.apiKeyHeader, apiKey);
-    setDefaultHeader(ApiConstants.anthropicVersionHeader, ApiConstants.claudeAnthropicVersion);
-  }
+  factory ApiClient() => _instance;
+  ApiClient._internal();
 
   /// Clear Claude API headers
   void clearClaudeHeaders() {
     removeDefaultHeader(ApiConstants.apiKeyHeader);
     removeDefaultHeader(ApiConstants.anthropicVersionHeader);
+  }
+
+  /// Configure Claude API headers
+  void configureClaudeHeaders(String apiKey) {
+    setDefaultHeader(ApiConstants.apiKeyHeader, apiKey);
+    setDefaultHeader(ApiConstants.anthropicVersionHeader,
+        ApiConstants.claudeAnthropicVersion);
+  }
+
+  /// Make a DELETE request
+  Future<ApiResponse<T>> delete<T>(
+    String endpoint, {
+    Map<String, String>? headers,
+    Map<String, dynamic>? queryParameters,
+    Duration? timeout,
+    T Function(Map<String, dynamic>)? fromJson,
+  }) async {
+    final uri = _buildUri(endpoint, queryParameters);
+
+    return _makeRequest<T>(
+      () => _client.delete(uri, headers: _mergeHeaders(headers)),
+      timeout: timeout,
+      fromJson: fromJson,
+    );
+  }
+
+  /// Close the HTTP client
+  void dispose() {
+    _client.close();
   }
 
   /// Make a GET request
@@ -63,9 +60,38 @@ class ApiClient {
     T Function(Map<String, dynamic>)? fromJson,
   }) async {
     final uri = _buildUri(endpoint, queryParameters);
-    
+
     return _makeRequest<T>(
       () => _client.get(uri, headers: _mergeHeaders(headers)),
+      timeout: timeout,
+      fromJson: fromJson,
+    );
+  }
+
+  /// Initialize the API client with default configuration
+  void initialize() {
+    _client = http.Client();
+    _setDefaultHeaders();
+  }
+
+  /// Make a PATCH request
+  Future<ApiResponse<T>> patch<T>(
+    String endpoint, {
+    Map<String, String>? headers,
+    Map<String, dynamic>? body,
+    Map<String, dynamic>? queryParameters,
+    Duration? timeout,
+    T Function(Map<String, dynamic>)? fromJson,
+  }) async {
+    final uri = _buildUri(endpoint, queryParameters);
+    final jsonBody = body != null ? jsonEncode(body) : null;
+
+    return _makeRequest<T>(
+      () => _client.patch(
+        uri,
+        headers: _mergeHeaders(headers),
+        body: jsonBody,
+      ),
       timeout: timeout,
       fromJson: fromJson,
     );
@@ -82,7 +108,7 @@ class ApiClient {
   }) async {
     final uri = _buildUri(endpoint, queryParameters);
     final jsonBody = body != null ? jsonEncode(body) : null;
-    
+
     return _makeRequest<T>(
       () => _client.post(
         uri,
@@ -105,7 +131,7 @@ class ApiClient {
   }) async {
     final uri = _buildUri(endpoint, queryParameters);
     final jsonBody = body != null ? jsonEncode(body) : null;
-    
+
     return _makeRequest<T>(
       () => _client.put(
         uri,
@@ -117,136 +143,33 @@ class ApiClient {
     );
   }
 
-  /// Make a DELETE request
-  Future<ApiResponse<T>> delete<T>(
-    String endpoint, {
-    Map<String, String>? headers,
-    Map<String, dynamic>? queryParameters,
-    Duration? timeout,
-    T Function(Map<String, dynamic>)? fromJson,
-  }) async {
-    final uri = _buildUri(endpoint, queryParameters);
-    
-    return _makeRequest<T>(
-      () => _client.delete(uri, headers: _mergeHeaders(headers)),
-      timeout: timeout,
-      fromJson: fromJson,
-    );
+  /// Remove a default header
+  void removeDefaultHeader(String key) {
+    _defaultHeaders.remove(key);
   }
 
-  /// Make a PATCH request
-  Future<ApiResponse<T>> patch<T>(
-    String endpoint, {
-    Map<String, String>? headers,
-    Map<String, dynamic>? body,
-    Map<String, dynamic>? queryParameters,
-    Duration? timeout,
-    T Function(Map<String, dynamic>)? fromJson,
-  }) async {
-    final uri = _buildUri(endpoint, queryParameters);
-    final jsonBody = body != null ? jsonEncode(body) : null;
-    
-    return _makeRequest<T>(
-      () => _client.patch(
-        uri,
-        headers: _mergeHeaders(headers),
-        body: jsonBody,
-      ),
-      timeout: timeout,
-      fromJson: fromJson,
-    );
+  /// Add or update a default header
+  void setDefaultHeader(String key, String value) {
+    _defaultHeaders[key] = value;
   }
 
-  /// Make a request with retry logic
-  Future<ApiResponse<T>> _makeRequest<T>(
-    Future<http.Response> Function() requestFunction, {
-    Duration? timeout,
-    T Function(Map<String, dynamic>)? fromJson,
-    int retryCount = 0,
-  }) async {
-    try {
-      final response = await requestFunction().timeout(
-        timeout ?? Duration(seconds: ApiConstants.requestTimeoutSeconds),
-      );
-
-      final apiResponse = _handleResponse<T>(response, fromJson);
-      
-      // Log successful requests in debug mode
-      _logRequest(response.request, response);
-      
-      return apiResponse;
-    } on SocketException {
-      throw NetworkException.noInternetConnection();
-    } on TimeoutException {
-      throw NetworkException.timeout();
-    } on FormatException catch (e) {
-      throw NetworkException.badRequest(details: 'Invalid response format: ${e.message}');
-    } on http.ClientException catch (e) {
-      // Retry logic for certain client exceptions
-      if (retryCount < ApiConstants.maxRetryAttempts && _shouldRetry(e)) {
-        await Future.delayed(Duration(seconds: ApiConstants.retryDelaySeconds));
-        return _makeRequest<T>(
-          requestFunction,
-          timeout: timeout,
-          fromJson: fromJson,
-          retryCount: retryCount + 1,
-        );
+  /// Build URI with query parameters
+  Uri _buildUri(String endpoint, Map<String, dynamic>? queryParameters) {
+    if (endpoint.startsWith('http')) {
+      // Full URL provided
+      final uri = Uri.parse(endpoint);
+      if (queryParameters != null && queryParameters.isNotEmpty) {
+        return uri.replace(queryParameters: {
+          ...uri.queryParameters,
+          ...queryParameters
+              .map((key, value) => MapEntry(key, value.toString())),
+        });
       }
-      throw NetworkException.serverError(details: e.message);
-    } catch (e) {
-      throw NetworkException.serverError(details: e.toString());
-    }
-  }
-
-  /// Handle HTTP response and convert to ApiResponse
-  ApiResponse<T> _handleResponse<T>(
-    http.Response response,
-    T Function(Map<String, dynamic>)? fromJson,
-  ) {
-    final statusCode = response.statusCode;
-    
-    // Parse response body
-    Map<String, dynamic> data = {};
-    try {
-      if (response.body.isNotEmpty) {
-        data = jsonDecode(response.body) as Map<String, dynamic>;
-      }
-    } catch (e) {
-      if (statusCode >= 200 && statusCode < 300) {
-        // Success but invalid JSON - treat as empty response
-        data = {};
-      } else {
-        throw NetworkException.badRequest(
-          details: 'Invalid JSON response: ${e.toString()}',
-        );
-      }
-    }
-
-    // Handle different status codes
-    if (statusCode >= 200 && statusCode < 300) {
-      // Success
-      T? parsedData;
-      if (fromJson != null && data.isNotEmpty) {
-        try {
-          parsedData = fromJson(data);
-        } catch (e) {
-          throw NetworkException.badRequest(
-            details: 'Failed to parse response: ${e.toString()}',
-          );
-        }
-      }
-      
-      return ApiResponse<T>.success(
-        data: parsedData,
-        rawData: data,
-        statusCode: statusCode,
-        headers: response.headers,
-      );
+      return uri;
     } else {
-      // Error response
-      _handleErrorResponse(statusCode, data);
-      // This line should never be reached due to exceptions thrown above
-      throw NetworkException.serverError(details: 'Unexpected error');
+      // Relative endpoint - you might want to add a base URL configuration
+      throw ArgumentError(
+          'Base URL not configured. Please provide full URL or configure base URL.');
     }
   }
 
@@ -278,35 +201,62 @@ class ApiClient {
         );
       default:
         throw NetworkException.serverError(
-          details: 'HTTP $statusCode: ${data['error']?['message'] ?? 'Unknown error'}',
+          details:
+              'HTTP $statusCode: ${data['error']?['message'] ?? 'Unknown error'}',
         );
     }
   }
 
-  /// Build URI with query parameters
-  Uri _buildUri(String endpoint, Map<String, dynamic>? queryParameters) {
-    if (endpoint.startsWith('http')) {
-      // Full URL provided
-      final uri = Uri.parse(endpoint);
-      if (queryParameters != null && queryParameters.isNotEmpty) {
-        return uri.replace(queryParameters: {
-          ...uri.queryParameters,
-          ...queryParameters.map((key, value) => MapEntry(key, value.toString())),
-        });
-      }
-      return uri;
-    } else {
-      // Relative endpoint - you might want to add a base URL configuration
-      throw ArgumentError('Base URL not configured. Please provide full URL or configure base URL.');
-    }
-  }
+  /// Handle HTTP response and convert to ApiResponse
+  ApiResponse<T> _handleResponse<T>(
+    http.Response response,
+    T Function(Map<String, dynamic>)? fromJson,
+  ) {
+    final statusCode = response.statusCode;
 
-  /// Merge default headers with request-specific headers
-  Map<String, String> _mergeHeaders(Map<String, String>? headers) {
-    return {
-      ..._defaultHeaders,
-      if (headers != null) ...headers,
-    };
+    // Parse response body
+    Map<String, dynamic> data = {};
+    try {
+      if (response.body.isNotEmpty) {
+        data = jsonDecode(response.body) as Map<String, dynamic>;
+      }
+    } catch (e) {
+      if (statusCode >= 200 && statusCode < 300) {
+        // Success but invalid JSON - treat as empty response
+        data = {};
+      } else {
+        throw NetworkException.badRequest(
+          details: 'Invalid JSON response: ${e.toString()}',
+        );
+      }
+    }
+
+    // Handle different status codes
+    if (statusCode >= 200 && statusCode < 300) {
+      // Success
+      T? parsedData;
+      if (fromJson != null && data.isNotEmpty) {
+        try {
+          parsedData = fromJson(data);
+        } catch (e) {
+          throw NetworkException.badRequest(
+            details: 'Failed to parse response: ${e.toString()}',
+          );
+        }
+      }
+
+      return ApiResponse<T>.success(
+        data: parsedData,
+        rawData: data,
+        statusCode: statusCode,
+        headers: response.headers,
+      );
+    } else {
+      // Error response
+      _handleErrorResponse(statusCode, data);
+      // This line should never be reached due to exceptions thrown above
+      throw NetworkException.serverError(details: 'Unexpected error');
+    }
   }
 
   /// Log request details for debugging
@@ -321,17 +271,70 @@ class ApiClient {
     }
   }
 
+  /// Make a request with retry logic
+  Future<ApiResponse<T>> _makeRequest<T>(
+    Future<http.Response> Function() requestFunction, {
+    Duration? timeout,
+    T Function(Map<String, dynamic>)? fromJson,
+    int retryCount = 0,
+  }) async {
+    try {
+      final response = await requestFunction().timeout(
+        timeout ?? Duration(seconds: ApiConstants.requestTimeoutSeconds),
+      );
+
+      final apiResponse = _handleResponse<T>(response, fromJson);
+
+      // Log successful requests in debug mode
+      _logRequest(response.request, response);
+
+      return apiResponse;
+    } on SocketException {
+      throw NetworkException.noInternetConnection();
+    } on TimeoutException {
+      throw NetworkException.timeout();
+    } on FormatException catch (e) {
+      throw NetworkException.badRequest(
+          details: 'Invalid response format: ${e.message}');
+    } on http.ClientException catch (e) {
+      // Retry logic for certain client exceptions
+      if (retryCount < ApiConstants.maxRetryAttempts && _shouldRetry(e)) {
+        await Future.delayed(Duration(seconds: ApiConstants.retryDelaySeconds));
+        return _makeRequest<T>(
+          requestFunction,
+          timeout: timeout,
+          fromJson: fromJson,
+          retryCount: retryCount + 1,
+        );
+      }
+      throw NetworkException.serverError(details: e.message);
+    } catch (e) {
+      throw NetworkException.serverError(details: e.toString());
+    }
+  }
+
+  /// Merge default headers with request-specific headers
+  Map<String, String> _mergeHeaders(Map<String, String>? headers) {
+    return {
+      ..._defaultHeaders,
+      if (headers != null) ...headers,
+    };
+  }
+
+  /// Set default headers for all requests
+  void _setDefaultHeaders() {
+    _defaultHeaders = {
+      ApiConstants.contentTypeHeader: ApiConstants.applicationJsonContentType,
+      'User-Agent': 'Flaude/1.0.0 (Flutter)',
+    };
+  }
+
   /// Determine if a request should be retried
   bool _shouldRetry(http.ClientException exception) {
     // Retry on network errors but not on client errors
     return exception.message.contains('Connection') ||
-           exception.message.contains('timeout') ||
-           exception.message.contains('SocketException');
-  }
-
-  /// Close the HTTP client
-  void dispose() {
-    _client.close();
+        exception.message.contains('timeout') ||
+        exception.message.contains('SocketException');
   }
 }
 
@@ -344,14 +347,21 @@ class ApiResponse<T> {
   final bool isSuccess;
   final String? errorMessage;
 
-  const ApiResponse._({
-    this.data,
-    required this.rawData,
-    required this.statusCode,
-    required this.headers,
-    required this.isSuccess,
-    this.errorMessage,
-  });
+  /// Create an error response
+  factory ApiResponse.error({
+    required Map<String, dynamic> rawData,
+    required int statusCode,
+    required Map<String, String> headers,
+    String? errorMessage,
+  }) {
+    return ApiResponse._(
+      rawData: rawData,
+      statusCode: statusCode,
+      headers: headers,
+      isSuccess: false,
+      errorMessage: errorMessage,
+    );
+  }
 
   /// Create a successful response
   factory ApiResponse.success({
@@ -369,21 +379,14 @@ class ApiResponse<T> {
     );
   }
 
-  /// Create an error response
-  factory ApiResponse.error({
-    required Map<String, dynamic> rawData,
-    required int statusCode,
-    required Map<String, String> headers,
-    String? errorMessage,
-  }) {
-    return ApiResponse._(
-      rawData: rawData,
-      statusCode: statusCode,
-      headers: headers,
-      isSuccess: false,
-      errorMessage: errorMessage,
-    );
-  }
+  const ApiResponse._({
+    this.data,
+    required this.rawData,
+    required this.statusCode,
+    required this.headers,
+    required this.isSuccess,
+    this.errorMessage,
+  });
 
   @override
   String toString() {
