@@ -1,4 +1,7 @@
+import 'package:claude_chat_clone/core/utils/utils.dart';
 import 'package:claude_chat_clone/domain/models/message.dart';
+
+import 'model_helper.dart';
 
 /// Data Transfer Object for Message - handles Firebase RTDB and API serialization
 class MessageDTO {
@@ -32,18 +35,19 @@ class MessageDTO {
   }) {
     final content = response['content'] is List
         ? (response['content'] as List).first['text'] as String
-        : response['content'] as String? ?? '';
+        : ModelHelper.parseString(response['content']);
 
     return MessageDTO(
       id: id,
       chatId: chatId,
-      content: content,
+      content: ModelHelper.sanitizeString(content, maxLength: 10000),
       isUser: false,
-      timestamp: DateTime.now().millisecondsSinceEpoch,
+      timestamp: DateTimeUtils.currentTimestampMillis(),
       metadata: {
         'usage': response['usage'],
         'model': response['model'],
         'stop_reason': response['stop_reason'],
+        'api_version': response['anthropic-version'],
       },
     );
   }
@@ -53,7 +57,7 @@ class MessageDTO {
     return MessageDTO(
       id: message.id,
       chatId: message.chatId,
-      content: message.content,
+      content: ModelHelper.sanitizeString(message.content, maxLength: 10000),
       isUser: message.isUser,
       timestamp: message.timestamp.millisecondsSinceEpoch,
       attachments: message.attachments,
@@ -64,26 +68,100 @@ class MessageDTO {
 
   /// Create MessageDTO from Firebase JSON
   factory MessageDTO.fromFirebaseJson(Map<String, dynamic> json) {
-    return MessageDTO(
-      id: json['id'] as String? ?? '',
-      chatId: json['chatId'] as String? ?? '',
-      content: json['content'] as String? ?? '',
-      isUser: json['isUser'] as bool? ?? false,
-      timestamp: _parseTimestamp(json['timestamp']),
-      attachments: (json['attachments'] as List?)?.cast<String>(),
-      hasArtifact: json['hasArtifact'] as bool?,
-      artifact: json['artifact'] as Map<String, dynamic>?,
-      metadata: json['metadata'] as Map<String, dynamic>?,
+    return ModelHelper.safeParse(
+      () => MessageDTO(
+        id: ModelHelper.parseString(json['id']),
+        chatId: ModelHelper.parseString(json['chatId']),
+        content: ModelHelper.parseString(json['content']),
+        isUser: ModelHelper.parseBool(json['isUser'], fallback: false),
+        timestamp: ModelHelper.parseTimestamp(json['timestamp']),
+        attachments: ModelHelper.parseNullableStringList(json['attachments']),
+        hasArtifact: ModelHelper.parseBool(json['hasArtifact']),
+        artifact: ModelHelper.parseNullableMap(json['artifact']),
+        metadata: ModelHelper.parseNullableMap(json['metadata']),
+      ),
+      MessageDTO(
+        id: '',
+        chatId: '',
+        content: '',
+        isUser: false,
+        timestamp: DateTimeUtils.currentTimestampMillis(),
+      ),
+      context: 'MessageDTO.fromFirebaseJson',
     );
+  }
+
+  /// Get formatted timestamp for display
+  String get formattedTimestamp {
+    return DateTimeUtils.formatMessageTimestamp(
+        DateTimeUtils.fromMilliseconds(timestamp));
   }
 
   @override
   int get hashCode => id.hashCode;
 
+  /// Get relative time (e.g., "2 hours ago")
+  String get relativeTime {
+    return DateTimeUtils.formatRelativeTime(
+        DateTimeUtils.fromMilliseconds(timestamp));
+  }
+
   @override
   bool operator ==(Object other) {
     if (identical(this, other)) return true;
     return other is MessageDTO && other.id == id;
+  }
+
+  /// Check if message contains sensitive information
+  bool containsSensitiveInfo() {
+    final lowerContent = content.toLowerCase();
+
+    // Check for potential API keys, passwords, etc.
+    final sensitivePatterns = [
+      RegExp(r'sk-ant-api03-[A-Za-z0-9_-]{95}'), // Claude API key
+      RegExp(r'password\s*[:=]\s*\S+', caseSensitive: false),
+      RegExp(r'api[_-]?key\s*[:=]\s*\S+', caseSensitive: false),
+      RegExp(r'token\s*[:=]\s*\S+', caseSensitive: false),
+    ];
+
+    return sensitivePatterns.any((pattern) => pattern.hasMatch(content));
+  }
+
+  /// Get content preview (truncated for display)
+  String getContentPreview({int maxLength = 100}) {
+    return StringUtils.truncateAtWord(content, maxLength);
+  }
+
+  /// Get validation errors
+  Map<String, String> getValidationErrors() {
+    final errors = <String, String>{};
+
+    if (id.isEmpty) {
+      errors['id'] = 'Message ID cannot be empty';
+    }
+
+    if (chatId.isEmpty) {
+      errors['chatId'] = 'Chat ID cannot be empty';
+    }
+
+    final contentValidation = ValidationUtils.validateMessage(content);
+    if (!contentValidation.isValid) {
+      errors['content'] = contentValidation.errorMessage ?? 'Invalid content';
+    }
+
+    if (timestamp <= 0) {
+      errors['timestamp'] = 'Invalid timestamp';
+    }
+
+    return errors;
+  }
+
+  /// Validate message data
+  bool isValid() {
+    return id.isNotEmpty &&
+        chatId.isNotEmpty &&
+        ValidationUtils.validateMessage(content).isValid &&
+        timestamp > 0;
   }
 
   /// Convert to Claude API format
@@ -101,7 +179,7 @@ class MessageDTO {
       chatId: chatId,
       content: content,
       isUser: isUser,
-      timestamp: DateTime.fromMillisecondsSinceEpoch(timestamp),
+      timestamp: DateTimeUtils.fromMilliseconds(timestamp),
       attachments: attachments,
       hasArtifact: hasArtifact,
       artifact: artifact,
@@ -113,32 +191,27 @@ class MessageDTO {
     final json = <String, dynamic>{
       'id': id,
       'chatId': chatId,
-      'content': content,
+      'content': ModelHelper.sanitizeString(content, maxLength: 10000),
       'isUser': isUser,
       'timestamp': timestamp,
     };
 
-    if (attachments != null) json['attachments'] = attachments;
+    if (attachments != null && attachments!.isNotEmpty) {
+      json['attachments'] = attachments;
+    }
     if (hasArtifact != null) json['hasArtifact'] = hasArtifact;
-    if (artifact != null) json['artifact'] = artifact;
-    if (metadata != null) json['metadata'] = metadata;
+    if (artifact != null && artifact!.isNotEmpty) {
+      json['artifact'] = ModelHelper.cleanMap(artifact!);
+    }
+    if (metadata != null && metadata!.isNotEmpty) {
+      json['metadata'] = ModelHelper.cleanMap(metadata!);
+    }
 
-    return json;
+    return ModelHelper.cleanMap(json);
   }
 
   @override
   String toString() {
     return 'MessageDTO{id: $id, chatId: $chatId, isUser: $isUser}';
-  }
-
-  static int _parseTimestamp(dynamic value) {
-    if (value == null) return DateTime.now().millisecondsSinceEpoch;
-    if (value is int) return value;
-    if (value is String) {
-      final parsed = DateTime.tryParse(value);
-      return parsed?.millisecondsSinceEpoch ??
-          DateTime.now().millisecondsSinceEpoch;
-    }
-    return DateTime.now().millisecondsSinceEpoch;
   }
 }

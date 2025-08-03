@@ -1,5 +1,8 @@
+import 'package:claude_chat_clone/core/utils/utils.dart';
 import 'package:claude_chat_clone/domain/models/chat.dart';
 import 'package:claude_chat_clone/domain/models/message.dart';
+
+import 'model_helper.dart';
 
 /// Data Transfer Object for Chat - handles Firebase RTDB serialization
 class ChatDTO {
@@ -30,8 +33,13 @@ class ChatDTO {
     return ChatDTO(
       id: chat.id,
       userId: chat.userId,
-      title: chat.title,
-      description: chat.description,
+      title: StringUtils.truncate(
+          ModelHelper.sanitizeString(chat.title, maxLength: 100), 100),
+      description: StringUtils.isNullOrEmpty(chat.description)
+          ? null
+          : StringUtils.truncate(
+              ModelHelper.sanitizeString(chat.description, maxLength: 500),
+              500),
       messagesMap: null, // Messages handled separately in Firebase
       createdAt: chat.createdAt.millisecondsSinceEpoch,
       updatedAt: chat.updatedAt?.millisecondsSinceEpoch,
@@ -40,18 +48,35 @@ class ChatDTO {
     );
   }
 
-  /// Create ChatDTO from Firebase JSON
+  /// Create ChatDTO from Firebase JSON using both ModelHelper and existing utilities
   factory ChatDTO.fromFirebaseJson(Map<String, dynamic> json) {
-    return ChatDTO(
-      id: json['id'] as String? ?? '',
-      userId: json['userId'] as String?,
-      title: json['title'] as String? ?? 'Untitled',
-      description: json['description'] as String?,
-      messagesMap: json['messages'] as Map<String, dynamic>?,
-      createdAt: _parseTimestamp(json['createdAt']),
-      updatedAt: _parseTimestamp(json['updatedAt']),
-      projectId: json['projectId'] as String?,
-      metadata: json['metadata'] as Map<String, dynamic>?,
+    return ModelHelper.safeParse(
+      () => ChatDTO(
+        id: ModelHelper.parseString(json['id']),
+        userId: StringUtils.isNullOrEmpty(json['userId'] as String?)
+            ? null
+            : json['userId'] as String,
+        title: ModelHelper.parseString(json['title'], fallback: 'Untitled'),
+        description: StringUtils.isNullOrEmpty(json['description'] as String?)
+            ? null
+            : StringUtils.sanitizeFileName(
+                json['description'] as String? ?? ''),
+        messagesMap: ModelHelper.parseNullableMap(json['messages']),
+        createdAt: ModelHelper.parseTimestamp(json['createdAt']),
+        updatedAt: json['updatedAt'] != null
+            ? ModelHelper.parseTimestamp(json['updatedAt'])
+            : null,
+        projectId: StringUtils.isNullOrEmpty(json['projectId'] as String?)
+            ? null
+            : json['projectId'] as String,
+        metadata: ModelHelper.parseNullableMap(json['metadata']),
+      ),
+      ChatDTO(
+        id: '',
+        title: 'Untitled',
+        createdAt: DateTimeUtils.currentTimestampMillis(),
+      ),
+      context: 'ChatDTO.fromFirebaseJson',
     );
   }
 
@@ -89,6 +114,33 @@ class ChatDTO {
     );
   }
 
+  /// Get validation errors
+  Map<String, String> getValidationErrors() {
+    final errors = <String, String>{};
+
+    if (id.isEmpty) {
+      errors['id'] = 'Chat ID cannot be empty';
+    }
+
+    final titleValidation = ValidationUtils.validateChatTitle(title);
+    if (!titleValidation.isValid) {
+      errors['title'] = titleValidation.errorMessage ?? 'Invalid title';
+    }
+
+    if (createdAt <= 0) {
+      errors['createdAt'] = 'Invalid creation timestamp';
+    }
+
+    return errors;
+  }
+
+  /// Validate chat data using existing ValidationUtils
+  bool isValid() {
+    return id.isNotEmpty &&
+        ValidationUtils.validateChatTitle(title).isValid &&
+        createdAt > 0;
+  }
+
   /// Convert to domain Chat model
   Chat toDomain({List<Message>? messages}) {
     return Chat(
@@ -97,44 +149,38 @@ class ChatDTO {
       title: title,
       description: description,
       messages: messages ?? [],
-      createdAt: DateTime.fromMillisecondsSinceEpoch(createdAt),
-      updatedAt: updatedAt != null
-          ? DateTime.fromMillisecondsSinceEpoch(updatedAt!)
-          : null,
+      createdAt: DateTimeUtils.fromMilliseconds(createdAt),
+      updatedAt:
+          updatedAt != null ? DateTimeUtils.fromMilliseconds(updatedAt!) : null,
       projectId: projectId,
     );
   }
 
-  /// Convert to Firebase JSON (without messages)
+  /// Convert to Firebase JSON (cleaned and validated)
   Map<String, dynamic> toFirebaseJson() {
     final json = <String, dynamic>{
       'id': id,
-      'title': title,
+      'title': ModelHelper.sanitizeString(title, maxLength: 100),
       'createdAt': createdAt,
     };
 
-    if (userId != null) json['userId'] = userId;
-    if (description != null) json['description'] = description;
+    if (StringUtils.isNotNullOrEmpty(userId)) json['userId'] = userId;
+    if (StringUtils.isNotNullOrEmpty(description)) {
+      json['description'] =
+          ModelHelper.sanitizeString(description, maxLength: 500);
+    }
     if (updatedAt != null) json['updatedAt'] = updatedAt;
-    if (projectId != null) json['projectId'] = projectId;
-    if (metadata != null) json['metadata'] = metadata;
+    if (StringUtils.isNotNullOrEmpty(projectId)) json['projectId'] = projectId;
+    if (metadata != null && metadata!.isNotEmpty) {
+      json['metadata'] = ModelHelper.cleanMap(metadata!);
+    }
 
-    return json;
+    // Return cleaned map without null/empty values
+    return ModelHelper.cleanMap(json);
   }
 
   @override
   String toString() {
     return 'ChatDTO{id: $id, title: $title, projectId: $projectId}';
-  }
-
-  static int _parseTimestamp(dynamic value) {
-    if (value == null) return DateTime.now().millisecondsSinceEpoch;
-    if (value is int) return value;
-    if (value is String) {
-      final parsed = DateTime.tryParse(value);
-      return parsed?.millisecondsSinceEpoch ??
-          DateTime.now().millisecondsSinceEpoch;
-    }
-    return DateTime.now().millisecondsSinceEpoch;
   }
 }
