@@ -98,6 +98,26 @@ class ChatException extends AppException {
       code: 'SEND_FAILED',
     );
   }
+
+  factory ChatException.unknown({String? reason}) {
+    if (reason != null) {
+      return ChatException(
+        message: reason,
+        code: 'UNKNOWN_CHAT_ERROR',
+      );
+    }
+    return const ChatException(
+      message: 'An unknown chat error occurred',
+      code: 'UNKNOWN_CHAT_ERROR',
+    );
+  }
+
+  factory ChatException.updateFailed({String? reason}) {
+    return ChatException(
+      message: reason ?? 'Failed to update chat',
+      code: 'UPDATE_FAILED',
+    );
+  }
 }
 
 /// Claude API specific exceptions
@@ -175,6 +195,15 @@ class ClaudeApiException extends AppException {
       message: 'Rate limit exceeded. Please wait and try again',
       code: 'RATE_LIMIT_EXCEEDED',
       statusCode: 429,
+    );
+  }
+
+  // Unknown error handler
+  factory ClaudeApiException.unknown({String? reason}) {
+    return ClaudeApiException(
+      message: reason ?? 'An unknown Claude API error occurred',
+      code: 'UNKNOWN_CLAUDE_API_ERROR',
+      statusCode: null,
     );
   }
 }
@@ -330,6 +359,13 @@ class ProjectException extends AppException {
     );
   }
 
+  factory ProjectException.nameAlreadyExists(String name) {
+    return ProjectException(
+      message: 'Project name "$name" already exists',
+      code: 'NAME_ALREADY_EXISTS',
+    );
+  }
+
   factory ProjectException.nameEmpty() {
     return const ProjectException(
       message: 'Project name cannot be empty',
@@ -348,6 +384,13 @@ class ProjectException extends AppException {
     return ProjectException(
       message: 'Project with ID "$projectId" not found',
       code: 'PROJECT_NOT_FOUND',
+    );
+  }
+
+  factory ProjectException.updateFailed({String? reason}) {
+    return ProjectException(
+      message: reason ?? 'Failed to update project',
+      code: 'UPDATE_FAILED',
     );
   }
 }
