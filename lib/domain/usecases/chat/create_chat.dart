@@ -1,9 +1,8 @@
 import 'package:claude_chat_clone/core/error/failures.dart';
 import 'package:claude_chat_clone/domain/entities/entities.dart';
 import 'package:claude_chat_clone/domain/repositories/repositories.dart';
+import 'package:claude_chat_clone/domain/usecases/base_usecase.dart';
 import 'package:dartz/dartz.dart';
-
-import '../base_usecase.dart';
 
 /// Use case for creating a new chat
 class CreateChat extends UseCase<String, CreateChatParams> {
@@ -34,14 +33,7 @@ class CreateChatParams extends BaseParams {
   });
 
   @override
-  Failure? validate() {
-    if (chat.title.trim().isEmpty) {
-      return const ValidationFailure(
-          message: 'Chat title cannot be empty');
-    }
-
-    return super.validate();
-  }
+  int get hashCode => chat.hashCode;
 
   @override
   bool operator ==(Object other) {
@@ -50,5 +42,11 @@ class CreateChatParams extends BaseParams {
   }
 
   @override
-  int get hashCode => chat.hashCode;
+  Failure? validate() {
+    if (chat.title.trim().isEmpty) {
+      return const ValidationFailure(message: 'Chat title cannot be empty');
+    }
+
+    return super.validate();
+  }
 }
