@@ -1,9 +1,8 @@
 import 'package:claude_chat_clone/core/error/failures.dart';
 import 'package:claude_chat_clone/domain/entities/entities.dart';
 import 'package:claude_chat_clone/domain/repositories/repositories.dart';
+import 'package:claude_chat_clone/domain/usecases/base_usecase.dart';
 import 'package:dartz/dartz.dart';
-
-import '../base_usecase.dart';
 
 /// Use case for retrieving available Claude AI models
 class GetModels extends UseCase<List<AIModel>, GetModelsParams> {
@@ -34,14 +33,7 @@ class GetModelsParams extends BaseParams {
   });
 
   @override
-  Failure? validate() {
-    if (apiKey.trim().isEmpty) {
-      return const ValidationFailure(
-          message: 'API key cannot be empty');
-    }
-
-    return super.validate();
-  }
+  int get hashCode => apiKey.hashCode;
 
   @override
   bool operator ==(Object other) {
@@ -50,5 +42,11 @@ class GetModelsParams extends BaseParams {
   }
 
   @override
-  int get hashCode => apiKey.hashCode;
+  Failure? validate() {
+    if (apiKey.trim().isEmpty) {
+      return const ValidationFailure(message: 'API key cannot be empty');
+    }
+
+    return super.validate();
+  }
 }
