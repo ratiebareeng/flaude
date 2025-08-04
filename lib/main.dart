@@ -2,7 +2,7 @@
 import 'package:claude_chat_clone/data/services/global_keys.dart';
 import 'package:claude_chat_clone/firebase_options.dart';
 import 'package:claude_chat_clone/ui/screens/screens.dart';
-import 'package:claude_chat_clone/ui/style/app_theme.dart';
+import 'package:claude_chat_clone/ui/theme/theme.dart';
 import 'package:claude_chat_clone/ui/viewmodels/app_state.dart';
 import 'package:claude_chat_clone/ui/viewmodels/chat_viewmodel.dart';
 import 'package:claude_chat_clone/ui/viewmodels/chats_viewmodel.dart';
