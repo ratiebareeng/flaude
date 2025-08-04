@@ -503,6 +503,22 @@ class StorageFailure extends Failure {
   }
 }
 
+/// Unknown or generic failures
+class UnknownFailure extends Failure {
+  const UnknownFailure({
+    required super.message,
+    super.code,
+    super.details,
+  });
+
+  factory UnknownFailure.withDetails([String? details]) {
+    return UnknownFailure(
+      message: details ?? 'An unknown error occurred',
+      code: 'UNKNOWN_ERROR',
+    );
+  }
+}
+
 /// Validation failures
 class ValidationFailure extends Failure {
   final Map<String, String>? fieldErrors;
