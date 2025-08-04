@@ -1,6 +1,6 @@
 import 'package:claude_chat_clone/core/error/failures.dart';
 import 'package:claude_chat_clone/domain/repositories/repositories.dart';
-import 'package:claude_chat_clone/domain/use_cases/base_usecase.dart';
+import 'package:claude_chat_clone/domain/usecases/base_usecase.dart';
 import 'package:dartz/dartz.dart';
 
 /// Use case for deleting the stored Claude API key
