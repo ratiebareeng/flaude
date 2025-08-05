@@ -1,3 +1,4 @@
+import 'package:claude_chat_clone/domain/entities/artifact.dart';
 import 'package:claude_chat_clone/plugins/error_manager/error_manager.dart';
 import 'package:claude_chat_clone/ui/viewmodels/home_viewmodel.dart';
 import 'package:claude_chat_clone/ui/widgets/widgets.dart';
@@ -71,7 +72,13 @@ class _HomeScreenContent extends StatelessWidget {
     }
 
     return ArtifactPanel(
-      artifact: viewModel.currentArtifact!,
+      artifact: Artifact(
+        id: viewModel.currentArtifact!['id'],
+        title: viewModel.currentArtifact!['title'],
+        type: viewModel.currentArtifact!['type'],
+        content: viewModel.currentArtifact!['content'],
+        createdAt: viewModel.currentArtifact!['createdAt'],
+      ),
       onClose: () => viewModel.handleArtifactView(null),
       showAddToProject: viewModel.currentView == 'chat',
       onAddToProject: () async {
