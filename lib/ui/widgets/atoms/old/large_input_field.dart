@@ -1,6 +1,6 @@
 import 'package:claude_chat_clone/domain/models/ai_models_list.dart';
 import 'package:claude_chat_clone/ui/viewmodels/chat_viewmodel.dart';
-import 'package:claude_chat_clone/ui/widgets/atoms/ai_model_dropdown_menu.dart';
+import 'package:claude_chat_clone/ui/widgets/atoms/old/ai_model_dropdown_menu.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
