@@ -1,5 +1,7 @@
 import 'package:claude_chat_clone/ui/viewmodels/chat_viewmodel.dart';
-import 'package:claude_chat_clone/ui/widgets/widgets.dart';
+import 'package:claude_chat_clone/ui/widgets/atoms/old/greeting_widget.dart';
+import 'package:claude_chat_clone/ui/widgets/atoms/old/large_input_field.dart';
+import 'package:claude_chat_clone/ui/widgets/atoms/old/suggestion_chips.dart';
 import 'package:flutter/material.dart';
 
 class NewChatCard extends StatelessWidget {

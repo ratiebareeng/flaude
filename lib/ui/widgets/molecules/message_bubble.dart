@@ -1,6 +1,6 @@
 import 'package:claude_chat_clone/data/util/date_time_utils.dart';
 import 'package:claude_chat_clone/domain/models/models.dart';
-import 'package:claude_chat_clone/ui/widgets/atoms/artefact_preview.dart';
+import 'package:claude_chat_clone/ui/widgets/atoms/old/artefact_preview.dart';
 import 'package:flutter/material.dart';
 
 class MessageBubble extends StatelessWidget {
